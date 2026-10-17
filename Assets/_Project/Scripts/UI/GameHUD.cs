@@ -46,11 +46,15 @@ namespace AIGame.UI
             ShipCoPilot coPilot = ship.GetComponent<ShipCoPilot>();
             if (coPilot != null)
             {
-                bool repair = coPilot.CurrentMode == ShipCoPilot.Mode.Repair;
-                string target = coPilot.CurrentTarget != null ? "engaging " + coPilot.CurrentTarget.Archetype : "scanning";
-                GUI.color = repair ? Color.green : new Color(1f, 0.55f, 0.3f);
+                ShipCoPilot.Mode coMode = coPilot.CurrentMode;
+                string status = coMode == ShipCoPilot.Mode.Off
+                    ? "Off (holding fire)"
+                    : $"{coMode} - {(coPilot.CurrentTarget != null ? "engaging " + coPilot.CurrentTarget.Archetype : "scanning")}";
+                GUI.color = coMode == ShipCoPilot.Mode.Repair ? Color.green
+                          : coMode == ShipCoPilot.Mode.Destroy ? new Color(1f, 0.55f, 0.3f)
+                          : Color.gray;
                 GUI.Label(new Rect(20, 140, 900, 60),
-                    $"Co-pilot [R]: {(repair ? "Repair" : "Destroy")} - {target}   Destroyed {coPilot.DestroyedCount}  Repaired {coPilot.RepairedCount}",
+                    $"Co-pilot [R]: {status}   Destroyed {coPilot.DestroyedCount}  Repaired {coPilot.RepairedCount}",
                     _labelStyle);
             }
         }

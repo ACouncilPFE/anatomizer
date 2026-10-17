@@ -8,9 +8,10 @@ namespace AIGame.Gameplay
     /// The co-pilot crew member: picks out bad cells ahead of the ship and shoots them, so you
     /// can concentrate on flying.
     ///
+    ///   Off           (default) the co-pilot holds fire; all shooting is yours.
     ///   Destroy mode  fires damage rounds that kill the cell.
     ///   Repair mode   fires repair rounds that heal the cell back into a harmless one.
-    /// Toggle with R (or A on the right VR controller).
+    /// R (or A on the right VR controller) cycles Off -> Destroy -> Repair -> Off.
     ///
     /// The co-pilot only engages cells in front of the ship, within range and with a clear line of
     /// sight (the artery wall blocks shots). It fires from the ship's WeaponSystem fire point using
@@ -21,11 +22,12 @@ namespace AIGame.Gameplay
     {
         public enum Mode
         {
+            Off,
             Destroy,
             Repair
         }
 
-        [SerializeField] private Mode mode = Mode.Destroy;
+        [SerializeField] private Mode mode = Mode.Off;
 
         [Header("Targeting")]
         [SerializeField] private float range = 40f;
@@ -89,11 +91,11 @@ namespace AIGame.Gameplay
             bool toggle = ShipInput.Read().ToggleCoPilot;
             if (toggle && !toggleHeld)
             {
-                SetMode(mode == Mode.Destroy ? Mode.Repair : Mode.Destroy);
+                SetMode((Mode)(((int)mode + 1) % 3));
             }
             toggleHeld = toggle;
 
-            if (GameManager.Instance != null && GameManager.Instance.CurrentState != GameState.InMission)
+            if (mode == Mode.Off || (GameManager.Instance != null && GameManager.Instance.CurrentState != GameState.InMission))
             {
                 target = null;
                 return;

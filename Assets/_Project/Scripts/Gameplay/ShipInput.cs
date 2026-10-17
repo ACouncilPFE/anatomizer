@@ -8,13 +8,13 @@ namespace AIGame.Gameplay
     ///
     /// Desktop (unchanged from before):
     ///   W/S forward, A/D strafe, E/Q rise/descend, Shift boost, Z/C roll, mouse steer, left click fire.
-    ///   P autopilot on/off (ShipPilot), R co-pilot destroy/repair (ShipCoPilot).
+    ///   P autopilot on/off (ShipPilot), R co-pilot off/destroy/repair (ShipCoPilot).
     /// VR controllers (Quest-style, read through UnityEngine.XR so it works with any OpenXR headset):
     ///   Left stick   throttle (Y) and strafe (X)
     ///   Right stick  steer: yaw (X) and pitch (Y)
     ///   Left trigger boost, right trigger fire
     ///   Right grip   rise, left grip descend
-    ///   X (left)     autopilot on/off, A (right) co-pilot destroy/repair
+    ///   X (left)     autopilot on/off, A (right) co-pilot off/destroy/repair
     ///   No roll in VR: the cockpit stays level for comfort.
     ///
     /// Both sources are added together, so a keyboard still works while a headset is on.
