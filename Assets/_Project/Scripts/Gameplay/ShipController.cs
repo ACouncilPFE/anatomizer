@@ -46,6 +46,7 @@ namespace AIGame.Gameplay
 
         // ─── Private state ────────────────────────────────────────────────────────
         private Rigidbody rb;
+        private ShipPilot pilot;   // optional crew member; fills in input on autopilot
 
         // Inputs buffered from Update → used in FixedUpdate
         private float inputForward;
@@ -66,6 +67,8 @@ namespace AIGame.Gameplay
         public float MaxPitchAngle  => 90f;   // no world-space pitch clamp — ship is free in 3D
         public float LinearDamping  => velocityLerpRate;
 
+        public void SetPilot(ShipPilot newPilot) => pilot = newPilot;
+
         // ─────────────────────────────────────────────────────────────────────────
 
         private void Awake()
@@ -82,6 +85,10 @@ namespace AIGame.Gameplay
         {
             // ShipInput merges keyboard/mouse with VR controllers (see ShipInput.cs).
             ShipInput.State input = ShipInput.Read();
+            if (pilot != null)
+            {
+                input = pilot.Steer(input);
+            }
             inputForward = input.Forward;
             inputStrafe  = input.Strafe;
             inputRise    = input.Rise;
@@ -167,15 +174,14 @@ namespace AIGame.Gameplay
 
         // ─── Tube assist ─────────────────────────────────────────────────────────
         // Gently pushes the ship back toward the tube centerline when it drifts past
-        // tubeAssistStart fraction of the tube radius. Constants MUST match
-        // BuildArteryTubeMesh(length=150, rx=6.5, ry=4, Sin(z*0.045)*2.6, Sin(z*0.03+1.1)*1.6).
+        // tubeAssistStart fraction of the tube radius. The centreline comes from ArteryPath, the
+        // same shape the tunnel mesh is built from. ShipPilot does the hard containment.
         private void ApplyTubeAssist()
         {
-            float z       = Mathf.Clamp(transform.position.z, 0f, tubeLength);
-            float centerX = Mathf.Sin(z * 0.045f) * 2.6f;
-            float centerY = Mathf.Sin(z * 0.03f + 1.1f) * 1.6f;
+            float z        = Mathf.Clamp(transform.position.z, 0f, tubeLength);
+            Vector3 center = ArteryPath.CenterAt(z);
 
-            Vector3 offset = transform.position - new Vector3(centerX, centerY, transform.position.z);
+            Vector3 offset = transform.position - new Vector3(center.x, center.y, transform.position.z);
             float normX    = offset.x / Mathf.Max(tubeRadiusX, 0.01f);
             float normY    = offset.y / Mathf.Max(tubeRadiusY, 0.01f);
             float radial   = Mathf.Sqrt(normX * normX + normY * normY);

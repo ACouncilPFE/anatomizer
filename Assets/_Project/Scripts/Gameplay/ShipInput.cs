@@ -8,11 +8,13 @@ namespace AIGame.Gameplay
     ///
     /// Desktop (unchanged from before):
     ///   W/S forward, A/D strafe, E/Q rise/descend, Shift boost, Z/C roll, mouse steer, left click fire.
+    ///   P autopilot on/off (ShipPilot), R co-pilot destroy/repair (ShipCoPilot).
     /// VR controllers (Quest-style, read through UnityEngine.XR so it works with any OpenXR headset):
     ///   Left stick   throttle (Y) and strafe (X)
     ///   Right stick  steer: yaw (X) and pitch (Y)
     ///   Left trigger boost, right trigger fire
     ///   Right grip   rise, left grip descend
+    ///   X (left)     autopilot on/off, A (right) co-pilot destroy/repair
     ///   No roll in VR: the cockpit stays level for comfort.
     ///
     /// Both sources are added together, so a keyboard still works while a headset is on.
@@ -29,6 +31,8 @@ namespace AIGame.Gameplay
             public float Roll;     // -1..+1
             public bool  Boost;
             public bool  Fire;
+            public bool  TogglePilot;    // held state; ShipPilot acts on the press
+            public bool  ToggleCoPilot;  // held state; ShipCoPilot acts on the press
         }
 
         private const float StickDeadzone = 0.15f;
@@ -59,6 +63,8 @@ namespace AIGame.Gameplay
                 Roll    = (Input.GetKey(KeyCode.Z) ? 1f : 0f) - (Input.GetKey(KeyCode.C) ? 1f : 0f),
                 Boost   = Input.GetKey(KeyCode.LeftShift),
                 Fire    = Input.GetMouseButton(0),
+                TogglePilot   = Input.GetKey(KeyCode.P),
+                ToggleCoPilot = Input.GetKey(KeyCode.R),
             };
         }
 
@@ -81,6 +87,14 @@ namespace AIGame.Gameplay
 
             s.Boost |= ReadFloat(left,  CommonUsages.trigger) > ButtonThreshold;
             s.Fire  |= ReadFloat(right, CommonUsages.trigger) > ButtonThreshold;
+
+            s.TogglePilot   |= ReadBool(left,  CommonUsages.primaryButton);
+            s.ToggleCoPilot |= ReadBool(right, CommonUsages.primaryButton);
+        }
+
+        private static bool ReadBool(InputDevice device, InputFeatureUsage<bool> usage)
+        {
+            return device.isValid && device.TryGetFeatureValue(usage, out bool v) && v;
         }
 
         private static Vector2 ReadAxis2D(InputDevice device)

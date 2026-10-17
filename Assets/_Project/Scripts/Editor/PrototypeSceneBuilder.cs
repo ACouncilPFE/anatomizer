@@ -159,6 +159,7 @@ namespace AIGame.Editor
             ship.AddComponent<ShipController>();
             ship.AddComponent<ShipHealth>();
             ship.AddComponent<ShipSystems>();
+            ship.AddComponent<ShipPilot>();
 
             GameObject meshObj = GameObject.CreatePrimitive(PrimitiveType.Capsule);
             meshObj.name = "Mesh";
@@ -182,6 +183,9 @@ namespace AIGame.Editor
             weaponSO.FindProperty("firePoint").objectReferenceValue = firePoint.transform;
             weaponSO.FindProperty("fireRate").floatValue = 8f;
             weaponSO.ApplyModifiedPropertiesWithoutUndo();
+
+            // Co-pilot borrows the main gun's projectile and fire point.
+            ship.AddComponent<ShipCoPilot>();
 
             ship.transform.position = new Vector3(0f, 0f, 0f);
             ship.transform.rotation = Quaternion.identity;
@@ -412,7 +416,7 @@ namespace AIGame.Editor
             MeshFilter meshFilter = tubeObj.AddComponent<MeshFilter>();
             MeshRenderer meshRenderer = tubeObj.AddComponent<MeshRenderer>();
             meshRenderer.sharedMaterial = wallMat;
-            meshFilter.sharedMesh = BuildArteryTubeMesh(150f, 6.5f, 4f, 80, 36);
+            meshFilter.sharedMesh = BuildArteryTubeMesh(ArteryPath.Length, ArteryPath.RadiusX, ArteryPath.RadiusY, 80, 36);
 
             // Add a static Rigidbody to make the tube a collider-only body
             Rigidbody tubeRb = tubeObj.AddComponent<Rigidbody>();
@@ -456,16 +460,12 @@ namespace AIGame.Editor
                 cell.transform.SetParent(arteryRoot.transform, false);
 
                 float rz = Random.Range(14f, 140f);
-                float centerX = Mathf.Sin(rz * 0.045f) * 2.6f;
-                float centerY = Mathf.Sin(rz * 0.03f + 1.1f) * 1.6f;
-
-                float pulsation = 1f + Mathf.Sin(rz * 0.11f) * 0.06f;
-                float tubeRx = 6.5f * pulsation;
-                float tubeRy = 4f * pulsation;
+                Vector3 center = ArteryPath.CenterAt(rz);
+                Vector2 radii = ArteryPath.RadiiAt(rz);
                 float angle = Random.Range(0f, Mathf.PI * 2f);
                 float radial01 = Mathf.Sqrt(Random.value) * 0.72f;
-                float rx = centerX + Mathf.Cos(angle) * tubeRx * radial01;
-                float ry = centerY + Mathf.Sin(angle) * tubeRy * radial01;
+                float rx = center.x + Mathf.Cos(angle) * radii.x * radial01;
+                float ry = center.y + Mathf.Sin(angle) * radii.y * radial01;
 
                 cell.transform.position = shipOrigin + new Vector3(rx, ry, rz);
                 cell.transform.localScale = new Vector3(1.15f, 0.3f, 0.95f);
@@ -503,13 +503,11 @@ namespace AIGame.Editor
                 float v = ringCount <= 1 ? 0f : ring / (float)(ringCount - 1);
                 float z = v * length;
 
-                float centerX = Mathf.Sin(z * 0.045f) * 2.6f;
-                float centerY = Mathf.Sin(z * 0.03f + 1.1f) * 1.6f;
-                Vector3 center = new Vector3(centerX, centerY, z);
-
-                float pulsation = 1f + Mathf.Sin(z * 0.11f) * 0.06f;
-                float rx = radiusX * pulsation;
-                float ry = radiusY * pulsation;
+                // Same shape the pilot steers by (see ArteryPath).
+                Vector3 center = ArteryPath.CenterAt(z);
+                Vector2 radii = ArteryPath.RadiiAt(z);
+                float rx = radii.x * (radiusX / ArteryPath.RadiusX);
+                float ry = radii.y * (radiusY / ArteryPath.RadiusY);
 
                 for (int side = 0; side < sides; side++)
                 {

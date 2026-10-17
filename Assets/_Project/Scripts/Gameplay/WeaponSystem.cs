@@ -11,6 +11,9 @@ namespace AIGame.Gameplay
 
         private float nextFireTime;
 
+        public Projectile ProjectilePrefab => projectilePrefab;
+        public Transform FirePoint => firePoint;
+
         private void Update()
         {
             if (GameManager.Instance != null && GameManager.Instance.CurrentState != GameState.InMission)

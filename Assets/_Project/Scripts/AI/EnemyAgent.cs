@@ -1,5 +1,6 @@
 using AIGame.Core;
 using AIGame.Gameplay;
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace AIGame.AI
@@ -11,12 +12,17 @@ namespace AIGame.AI
         Pursue,
         Attack,
         Retreat,
-        Dead
+        Dead,
+        Repaired
     }
 
     [RequireComponent(typeof(EnemyPerception))]
-    public class EnemyAgent : MonoBehaviour, IDamageable
+    public class EnemyAgent : MonoBehaviour, IDamageable, IRepairable
     {
+        // Every live agent, so the co-pilot can pick targets without searching the scene.
+        private static readonly List<EnemyAgent> active = new List<EnemyAgent>();
+        public static IReadOnlyList<EnemyAgent> Active => active;
+
         [Header("Identity")]
         [SerializeField] private EnemyArchetype archetype = EnemyArchetype.MacrophageSwarm;
 
@@ -32,6 +38,11 @@ namespace AIGame.AI
         [SerializeField] private float rotationSpeed = 220f;
         [SerializeField] private float patrolRadius = 14f;
 
+        [Header("Repair")]
+        [SerializeField] private float repairRequired = 45f;        // repair points to turn this cell healthy
+        [SerializeField] private float repairedLingerSeconds = 3f;  // healed cell stays visible, then leaves
+        [SerializeField] private Color repairedColor = new Color(0.85f, 0.15f, 0.22f); // healthy red cell
+
         private EnemyPerception perception;
         private Transform shipTarget;
         private ShipSystems shipSystems;
@@ -42,9 +53,23 @@ namespace AIGame.AI
         private Vector3 patrolTarget;
         private float currentHealth;
         private float nextAttackTime;
+        private float repairProgress;
 
         public EnemyAgentState CurrentState => currentState;
         public EnemyArchetype Archetype => archetype;
+        /// <summary>False once the cell is destroyed or repaired; nothing should shoot it then.</summary>
+        public bool IsHostile => currentState != EnemyAgentState.Dead && currentState != EnemyAgentState.Repaired;
+        public float RepairProgress01 => repairRequired <= 0f ? 1f : Mathf.Clamp01(repairProgress / repairRequired);
+
+        private void OnEnable()
+        {
+            active.Add(this);
+        }
+
+        private void OnDisable()
+        {
+            active.Remove(this);
+        }
 
         private void Awake()
         {
@@ -91,7 +116,7 @@ namespace AIGame.AI
 
         public void TickAgent()
         {
-            if (currentState == EnemyAgentState.Dead)
+            if (!IsHostile)
             {
                 return;
             }
@@ -115,7 +140,7 @@ namespace AIGame.AI
 
         public void ApplyDamage(float amount)
         {
-            if (amount <= 0f || currentState == EnemyAgentState.Dead)
+            if (amount <= 0f || !IsHostile)
             {
                 return;
             }
@@ -124,8 +149,39 @@ namespace AIGame.AI
             if (currentHealth <= 0f)
             {
                 currentState = EnemyAgentState.Dead;
+                GameEvents.RaiseCellDestroyed();
                 Destroy(gameObject);
             }
+        }
+
+        /// <summary>
+        /// Repair rounds heal the cell instead of killing it. Once fully repaired it stops
+        /// attacking, turns back into a healthy red cell, and leaves after a few seconds.
+        /// </summary>
+        public void Repair(float amount)
+        {
+            if (amount <= 0f || !IsHostile)
+            {
+                return;
+            }
+
+            repairProgress += amount;
+            if (repairProgress < repairRequired)
+            {
+                return;
+            }
+
+            currentState = EnemyAgentState.Repaired;
+            Renderer renderer = GetComponentInChildren<Renderer>();
+            if (renderer != null)
+            {
+                Material mat = renderer.material;
+                mat.color = repairedColor;
+                mat.SetColor("_EmissionColor", repairedColor * 0.3f);
+            }
+
+            GameEvents.RaiseCellRepaired();
+            Destroy(gameObject, repairedLingerSeconds);
         }
 
         public void ConfigureArchetype(EnemyArchetype newArchetype)

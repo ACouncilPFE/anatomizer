@@ -9,6 +9,8 @@ namespace AIGame.Gameplay
         [SerializeField] private float positionSmoothTime = 0.15f;
         [SerializeField] private float lookSmoothTime = 0.08f;
         [SerializeField] private float lookAheadDistance = 10f;
+        [Tooltip("Keep the camera inside the artery wall so the view never cuts outside the vessel.")]
+        [SerializeField] private bool keepInsideArtery = true;
 
         private Vector3 _velocity;
 
@@ -19,7 +21,13 @@ namespace AIGame.Gameplay
             // Keep camera horizon stable by applying only yaw to follow offset.
             Quaternion yawOnly = Quaternion.Euler(0f, target.eulerAngles.y, 0f);
             Vector3 desiredPosition = target.position + yawOnly * offset;
-            transform.position = Vector3.SmoothDamp(transform.position, desiredPosition, ref _velocity, positionSmoothTime);
+            Vector3 position = Vector3.SmoothDamp(transform.position, desiredPosition, ref _velocity, positionSmoothTime);
+            if (keepInsideArtery)
+            {
+                // Generous z range: the camera trails the ship, so it starts behind the artery mouth.
+                ArteryPath.ClampInside(ref position, 0.9f, 0.3f, -20f, ArteryPath.Length, out _);
+            }
+            transform.position = position;
 
             // Keep look direction tied to yaw only to avoid tunnel "shifting" with pitch/roll input.
             Vector3 lookTarget = target.position + yawOnly * Vector3.forward * lookAheadDistance;
