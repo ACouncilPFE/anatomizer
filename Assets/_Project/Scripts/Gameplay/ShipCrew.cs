@@ -4,8 +4,8 @@ using UnityEngine.SceneManagement;
 namespace AIGame.Gameplay
 {
     /// <summary>
-    /// Puts the crew (ShipPilot and ShipCoPilot) aboard every ship when a scene loads, so scenes
-    /// built before the crew existed get one without being rebuilt or edited.
+    /// Puts the crew (ShipPilot and ShipCoPilot) and the suture beam aboard every ship when a scene
+    /// loads, so scenes built before they existed get them without being rebuilt or edited.
     /// </summary>
     public static class ShipCrew
     {
@@ -27,6 +27,10 @@ namespace AIGame.Gameplay
                 if (ship.GetComponent<ShipCoPilot>() == null)
                 {
                     ship.gameObject.AddComponent<ShipCoPilot>();
+                }
+                if (ship.GetComponent<SutureBeam>() == null)
+                {
+                    ship.gameObject.AddComponent<SutureBeam>();
                 }
             }
         }

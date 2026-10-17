@@ -9,6 +9,7 @@ namespace AIGame.Gameplay
     ///     ArteryPath so the walls you see are the walls the pilot enforces;
     ///   - procedural lining texture and normal map (mottled pink-red, dark branching vessels);
     ///   - red blood cells (proper biconcave discs) flowing down the vessel;
+    ///   - damage to the wall to repair: tears, plaque and clots (ArteryLesionField);
     ///   - an endoscope-style light on the ship and a deep-red, darker atmosphere so the wet walls
     ///     catch highlights near you and fall away into the red haze.
     ///
@@ -30,6 +31,9 @@ namespace AIGame.Gameplay
 
         [Header("Blood")]
         [SerializeField] private int bloodCellCount = 70;
+
+        [Header("Wall damage")]
+        [SerializeField] private bool addLesions = true;
 
         [Header("Lighting")]
         [SerializeField] private bool addEndoscopeLight = true;
@@ -72,6 +76,13 @@ namespace AIGame.Gameplay
                 GameObject flow = new GameObject("BloodFlow");
                 flow.transform.SetParent(transform, false);
                 flow.AddComponent<BloodFlow>().Configure(bloodCellCount);
+            }
+
+            if (addLesions && GetComponentInChildren<ArteryLesionField>() == null)
+            {
+                GameObject lesions = new GameObject("Lesions");
+                lesions.transform.SetParent(transform, false);
+                lesions.AddComponent<ArteryLesionField>();
             }
 
             if (addEndoscopeLight)

@@ -8,14 +8,14 @@ namespace AIGame.Gameplay
     ///
     /// Desktop (unchanged from before):
     ///   W/S forward, A/D strafe, E/Q rise/descend, Shift boost, Z/C roll, mouse steer.
-    ///   Left click destroy round, right click medicine round.
+    ///   Left click destroy round (laser), right click medicine round, hold F suture beam.
     ///   P autopilot on/off (ShipPilot), R co-pilot on/off (ShipCoPilot).
     /// VR controllers (Quest-style, read through UnityEngine.XR so it works with any OpenXR headset):
     ///   Left stick   throttle (Y) and strafe (X)
     ///   Right stick  steer: yaw (X) and pitch (Y)
     ///   Left trigger boost, right trigger destroy round, B (right) medicine round
     ///   Right grip   rise, left grip descend
-    ///   X (left)     autopilot on/off, A (right) co-pilot on/off
+    ///   X (left)     autopilot on/off, A (right) co-pilot on/off, Y (left) suture beam
     ///   No roll in VR: the cockpit stays level for comfort.
     ///
     /// Both sources are added together, so a keyboard still works while a headset is on.
@@ -33,6 +33,7 @@ namespace AIGame.Gameplay
             public bool  Boost;
             public bool  Fire;           // destroy round
             public bool  FireMedicine;   // medicine round
+            public bool  Suture;         // suture beam (held)
             public bool  TogglePilot;    // held state; ShipPilot acts on the press
             public bool  ToggleCoPilot;  // held state; ShipCoPilot acts on the press
         }
@@ -66,6 +67,7 @@ namespace AIGame.Gameplay
                 Boost   = Input.GetKey(KeyCode.LeftShift),
                 Fire    = Input.GetMouseButton(0),
                 FireMedicine  = Input.GetMouseButton(1),
+                Suture        = Input.GetKey(KeyCode.F),
                 TogglePilot   = Input.GetKey(KeyCode.P),
                 ToggleCoPilot = Input.GetKey(KeyCode.R),
             };
@@ -92,6 +94,7 @@ namespace AIGame.Gameplay
             s.Fire  |= ReadFloat(right, CommonUsages.trigger) > ButtonThreshold;
 
             s.FireMedicine  |= ReadBool(right, CommonUsages.secondaryButton);
+            s.Suture        |= ReadBool(left,  CommonUsages.secondaryButton);
             s.TogglePilot   |= ReadBool(left,  CommonUsages.primaryButton);
             s.ToggleCoPilot |= ReadBool(right, CommonUsages.primaryButton);
         }

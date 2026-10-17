@@ -48,9 +48,60 @@ namespace AIGame.UI
             GUI.Label(new Rect(20, 130, 900, 60),
                 $"Curable cells destroyed: {gameMan.HealthyCellsLost} / {gameMan.MaxHealthyCellsLost}", _labelStyle);
 
+            float blood = gameMan.BloodLoss01;
+            GUI.color = blood > 0.6f ? Color.red : blood > 0.3f ? Color.yellow : new Color(1f, 0.75f, 0.75f);
+            GUI.Label(new Rect(20, 250, 900, 60), $"Patient blood loss: {blood * 100f:F0}%", _labelStyle);
+
+            DrawNearestLesion();
+
             GUI.color = new Color(1f, 1f, 1f, 0.75f);
-            GUI.Label(new Rect(20, Screen.height - 40, 1200, 30),
-                "Green INFECTED cells: medicine (right-click).   Spiky purple MALIGNANT cells: destroy (left-click).", _hintStyle);
+            GUI.Label(new Rect(20, Screen.height - 64, 1400, 30),
+                "Cells - green INFECTED: medicine (right-click).   Spiky purple MALIGNANT: destroy (left-click).", _hintStyle);
+            GUI.Label(new Rect(20, Screen.height - 40, 1400, 30),
+                "Wall - TEAR: hold F to suture.   PLAQUE: laser (left-click).   CLOT: clot-buster (right-click).", _hintStyle);
+        }
+
+        // Points you at the closest wall damage still to be fixed.
+        private void DrawNearestLesion()
+        {
+            ShipController ship = FindObjectOfType<ShipController>();
+            if (ship == null)
+            {
+                return;
+            }
+
+            ArteryLesion nearest = null;
+            float best = float.MaxValue;
+            foreach (ArteryLesion lesion in ArteryLesion.Active)
+            {
+                float d = Vector3.Distance(ship.transform.position, lesion.transform.position);
+                if (d < best)
+                {
+                    best = d;
+                    nearest = lesion;
+                }
+            }
+
+            if (nearest == null)
+            {
+                GUI.color = new Color(0.5f, 1f, 0.6f);
+                GUI.Label(new Rect(20, 290, 900, 60), "Artery wall: all damage repaired", _labelStyle);
+                return;
+            }
+
+            float along = nearest.transform.position.z - ship.transform.position.z;
+            string where = Mathf.Abs(along) < 3f ? "right here" : along > 0f ? $"{along:F0} m ahead" : $"{-along:F0} m behind";
+            GUI.color = nearest.Type == LesionType.Tear ? new Color(1f, 0.45f, 0.4f) : new Color(1f, 0.85f, 0.55f);
+            GUI.Label(new Rect(20, 290, 900, 60),
+                $"Wall damage left: {ArteryLesion.Active.Count}   Nearest: {nearest.Title}, {where} - {nearest.ToolHint}", _labelStyle);
+
+            SutureBeam beam = ship.GetComponent<SutureBeam>();
+            if (beam != null && beam.IsActive)
+            {
+                GUI.color = new Color(0.55f, 0.9f, 1f);
+                GUI.Label(new Rect(20, 330, 900, 60),
+                    beam.Target != null ? "Suture beam: stitching..." : "Suture beam: point the nose at a tear (within 22 m)", _labelStyle);
+            }
         }
 
         private void DrawCrew(GameObject ship)
@@ -96,7 +147,9 @@ namespace AIGame.UI
                 ? "MISSION COMPLETE - the artery is clear"
                 : gameMan.HealthyCellsLost >= gameMan.MaxHealthyCellsLost
                     ? "MISSION FAILED - too many curable cells destroyed"
-                    : "MISSION FAILED";
+                    : gameMan.BloodLoss01 >= 1f
+                        ? "MISSION FAILED - the patient lost too much blood"
+                        : "MISSION FAILED";
             GUI.Label(new Rect(0, Screen.height * 0.4f, Screen.width, 80), text, _bannerStyle);
         }
     }

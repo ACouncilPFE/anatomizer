@@ -102,6 +102,26 @@ namespace AIGame.Gameplay
             return Build(colors, size, "MalignantCell_Albedo");
         }
 
+        /// <summary>A soft round dot, for particles (blood leaking from a tear).</summary>
+        public static Texture2D SoftDot(int size)
+        {
+            Color[] colors = new Color[size * size];
+            float half = (size - 1) * 0.5f;
+            for (int y = 0; y < size; y++)
+            {
+                for (int x = 0; x < size; x++)
+                {
+                    float d = Mathf.Sqrt((x - half) * (x - half) + (y - half) * (y - half)) / half;
+                    colors[y * size + x] = new Color(1f, 1f, 1f, Mathf.Clamp01(1f - d * d));
+                }
+            }
+
+            Texture2D tex = new Texture2D(size, size, TextureFormat.RGBA32, false) { name = "SoftDot", wrapMode = TextureWrapMode.Clamp };
+            tex.SetPixels(colors);
+            tex.Apply();
+            return tex;
+        }
+
         // ─── Noise helpers ──────────────────────────────────────────────────────────
 
         // Perlin noise that repeats every `size` pixels in both directions (a tile blend of four

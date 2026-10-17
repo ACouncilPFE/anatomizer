@@ -23,6 +23,7 @@ namespace AIGame.Core
         private int completedObjectives;
         private int cellsTreated;
         private int healthyCellsLost;
+        private float bloodLoss;
 
         public GameState CurrentState { get; private set; } = GameState.Briefing;
         public float RemainingTime => remainingTime;
@@ -32,17 +33,21 @@ namespace AIGame.Core
         public int RequiredTreatments => requiredTreatments;
         public int HealthyCellsLost => healthyCellsLost;
         public int MaxHealthyCellsLost => maxHealthyCellsLost;
+        /// <summary>The patient's blood loss from open tears, 0..1. At 1 the mission fails.</summary>
+        public float BloodLoss01 => bloodLoss;
 
         private void OnEnable()
         {
             GameEvents.OnCellRepaired += HandleCellCured;
             GameEvents.OnCellDestroyed += HandleCellDestroyed;
+            GameEvents.OnLesionTreated += RegisterCorrectTreatment;
         }
 
         private void OnDisable()
         {
             GameEvents.OnCellRepaired -= HandleCellCured;
             GameEvents.OnCellDestroyed -= HandleCellDestroyed;
+            GameEvents.OnLesionTreated -= RegisterCorrectTreatment;
         }
 
         private void Awake()
@@ -89,6 +94,7 @@ namespace AIGame.Core
             completedObjectives = 0;
             cellsTreated = 0;
             healthyCellsLost = 0;
+            bloodLoss = 0f;
             GameEvents.RaiseObjectiveProgressChanged(completedObjectives, requiredObjectives);
             SetState(GameState.InMission);
             Time.timeScale = 1f;
@@ -151,6 +157,21 @@ namespace AIGame.Core
 
             healthyCellsLost++;
             if (healthyCellsLost >= maxHealthyCellsLost)
+            {
+                FailMission();
+            }
+        }
+
+        /// <summary>Open tears call this every frame while they bleed.</summary>
+        public void AddBloodLoss(float amount)
+        {
+            if (CurrentState != GameState.InMission || amount <= 0f)
+            {
+                return;
+            }
+
+            bloodLoss = Mathf.Clamp01(bloodLoss + amount);
+            if (bloodLoss >= 1f)
             {
                 FailMission();
             }

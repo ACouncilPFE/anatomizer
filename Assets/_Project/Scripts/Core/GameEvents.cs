@@ -11,6 +11,7 @@ namespace AIGame.Core
         public static Action<bool> OnMissionEnded;
         public static Action<bool> OnCellDestroyed; // true if the cell was curable (a wasted cell)
         public static Action OnCellRepaired;
+        public static Action OnLesionTreated; // a tear, plaque or clot in the artery wall was fixed
 
         public static void RaiseGameStateChanged(GameState state) => OnGameStateChanged?.Invoke(state);
         public static void RaiseMissionTimerUpdated(float remainingSeconds) => OnMissionTimerUpdated?.Invoke(remainingSeconds);
@@ -19,5 +20,6 @@ namespace AIGame.Core
         public static void RaiseMissionEnded(bool success) => OnMissionEnded?.Invoke(success);
         public static void RaiseCellDestroyed(bool wasCurable) => OnCellDestroyed?.Invoke(wasCurable);
         public static void RaiseCellRepaired() => OnCellRepaired?.Invoke();
+        public static void RaiseLesionTreated() => OnLesionTreated?.Invoke();
     }
 }
