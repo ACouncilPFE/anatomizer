@@ -464,6 +464,9 @@ namespace AIGame.Gameplay
             ParticleSystem.VelocityOverLifetimeModule velocity = ps.velocityOverLifetime;
             velocity.enabled = true;
             velocity.space = ParticleSystemSimulationSpace.World;
+            // All three axes must use the same curve mode, or Unity logs an error every frame.
+            velocity.x = new ParticleSystem.MinMaxCurve(-0.2f, 0.2f);
+            velocity.y = new ParticleSystem.MinMaxCurve(-0.2f, 0.2f);
             velocity.z = new ParticleSystem.MinMaxCurve(2.5f, 4f);
 
             ParticleSystem.ColorOverLifetimeModule color = ps.colorOverLifetime;

@@ -32,7 +32,8 @@ namespace AIGame.UI
                 return;
             }
 
-            Rect rect = new Rect(anchor.x, anchor.y, 340f, 90f);
+            // Top-right, out of the way of the main HUD.
+            Rect rect = new Rect(Screen.width - anchor.x - 220f, anchor.y, 220f, 90f);
             string text = "Zone: " + spawner.CurrentZone
                 + "\nAlive: " + spawner.AliveEnemyCount + " / " + spawner.MaxAliveInZone
                 + "\nNext Spawn In: " + spawner.TimeUntilNextSpawn.ToString("0.0") + "s";

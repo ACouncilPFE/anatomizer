@@ -10,6 +10,8 @@ namespace AIGame.UI
         private GUIStyle _boxStyle;
         private GUIStyle _hintStyle;
         private GUIStyle _bannerStyle;
+        private float _virtualWidth;
+        private float _virtualHeight;
 
         private void OnGUI()
         {
@@ -26,6 +28,14 @@ namespace AIGame.UI
             if (shipHealth == null || gameMan == null)
                 return;
 
+            // Lay the HUD out for a 1080-pixel-tall screen and scale it to the real one, so it
+            // fits a small Game view without the lines running into each other.
+            Matrix4x4 previousMatrix = GUI.matrix;
+            float scale = Mathf.Clamp(Screen.height / 1080f, 0.35f, 2f);
+            GUI.matrix = Matrix4x4.Scale(new Vector3(scale, scale, 1f));
+            _virtualWidth = Screen.width / scale;
+            _virtualHeight = Screen.height / scale;
+
             GUI.color = Color.cyan;
             GUI.Label(new Rect(20, 20, 400, 60), $"Health: {shipHealth.CurrentHealth:F1} / {shipHealth.MaxHealth:F1}", _labelStyle);
             GUI.Label(new Rect(20, 60, 400, 60), $"Time: {gameMan.RemainingTime:F1}s", _labelStyle);
@@ -35,6 +45,7 @@ namespace AIGame.UI
             DrawEndBanner(gameMan);
 
             GUI.color = Color.white;
+            GUI.matrix = previousMatrix;
         }
 
         private void DrawMission(GameManager gameMan)
@@ -55,9 +66,9 @@ namespace AIGame.UI
             DrawNearestLesion();
 
             GUI.color = new Color(1f, 1f, 1f, 0.75f);
-            GUI.Label(new Rect(20, Screen.height - 64, 1400, 30),
+            GUI.Label(new Rect(20, _virtualHeight - 64, 1800, 30),
                 "Cells - green INFECTED: medicine (right-click).   Spiky purple MALIGNANT: destroy (left-click).", _hintStyle);
-            GUI.Label(new Rect(20, Screen.height - 40, 1600, 30),
+            GUI.Label(new Rect(20, _virtualHeight - 40, 1800, 30),
                 "Artery - PLAQUE: laser (left-click).  CLOT: medicine (right-click).  Beam (pick 1-4, hold F): 1 TEAR suture, 2 ANEURYSM stent, 3 BLOCKAGE balloon, 4 FOREIGN OBJECT grabber.", _hintStyle);
         }
 
@@ -154,7 +165,7 @@ namespace AIGame.UI
                     : gameMan.BloodLoss01 >= 1f
                         ? "MISSION FAILED - the patient lost too much blood"
                         : "MISSION FAILED";
-            GUI.Label(new Rect(0, Screen.height * 0.4f, Screen.width, 80), text, _bannerStyle);
+            GUI.Label(new Rect(0, _virtualHeight * 0.4f, _virtualWidth, 80), text, _bannerStyle);
         }
     }
 }
