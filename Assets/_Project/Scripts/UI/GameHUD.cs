@@ -57,8 +57,8 @@ namespace AIGame.UI
             GUI.color = new Color(1f, 1f, 1f, 0.75f);
             GUI.Label(new Rect(20, Screen.height - 64, 1400, 30),
                 "Cells - green INFECTED: medicine (right-click).   Spiky purple MALIGNANT: destroy (left-click).", _hintStyle);
-            GUI.Label(new Rect(20, Screen.height - 40, 1400, 30),
-                "Wall - TEAR: hold F to suture.   PLAQUE: laser (left-click).   CLOT: clot-buster (right-click).", _hintStyle);
+            GUI.Label(new Rect(20, Screen.height - 40, 1600, 30),
+                "Artery - PLAQUE: laser (left-click).  CLOT: medicine (right-click).  Beam (pick 1-4, hold F): 1 TEAR suture, 2 ANEURYSM stent, 3 BLOCKAGE balloon, 4 FOREIGN OBJECT grabber.", _hintStyle);
         }
 
         // Points you at the closest wall damage still to be fixed.
@@ -85,7 +85,7 @@ namespace AIGame.UI
             if (nearest == null)
             {
                 GUI.color = new Color(0.5f, 1f, 0.6f);
-                GUI.Label(new Rect(20, 290, 900, 60), "Artery wall: all damage repaired", _labelStyle);
+                GUI.Label(new Rect(20, 290, 900, 60), "Artery: all damage repaired", _labelStyle);
                 return;
             }
 
@@ -93,14 +93,18 @@ namespace AIGame.UI
             string where = Mathf.Abs(along) < 3f ? "right here" : along > 0f ? $"{along:F0} m ahead" : $"{-along:F0} m behind";
             GUI.color = nearest.Type == LesionType.Tear ? new Color(1f, 0.45f, 0.4f) : new Color(1f, 0.85f, 0.55f);
             GUI.Label(new Rect(20, 290, 900, 60),
-                $"Wall damage left: {ArteryLesion.Active.Count}   Nearest: {nearest.Title}, {where} - {nearest.ToolHint}", _labelStyle);
+                $"Artery damage left: {ArteryLesion.Active.Count}   Nearest: {nearest.Title}, {where} - {nearest.ToolHint}", _labelStyle);
 
-            SutureBeam beam = ship.GetComponent<SutureBeam>();
-            if (beam != null && beam.IsActive)
+            SurgicalBeam beam = ship.GetComponent<SurgicalBeam>();
+            if (beam != null)
             {
-                GUI.color = new Color(0.55f, 0.9f, 1f);
-                GUI.Label(new Rect(20, 330, 900, 60),
-                    beam.Target != null ? "Suture beam: stitching..." : "Suture beam: point the nose at a tear (within 22 m)", _labelStyle);
+                string tool = $"{beam.CurrentToolNumber} {SurgicalBeam.ToolName(beam.CurrentTool)}";
+                string state = !beam.IsActive ? "hold F to use"
+                    : beam.Target == null ? "point the nose at a problem (within 22 m)"
+                    : beam.Target.RequiredTool == beam.CurrentTool ? "working on " + beam.Target.Title.ToLower() + "..."
+                    : "wrong tool for " + beam.Target.Title.ToLower() + " - " + beam.Target.ToolHint;
+                GUI.color = SurgicalBeam.ToolColor(beam.CurrentTool);
+                GUI.Label(new Rect(20, 330, 1100, 60), $"Surgical beam [1-4]: {tool} - {state}", _labelStyle);
             }
         }
 

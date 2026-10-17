@@ -181,7 +181,7 @@ namespace AIGame.Editor
 
             // Co-pilot borrows the main gun's projectile and fire point.
             ship.AddComponent<ShipCoPilot>();
-            ship.AddComponent<SutureBeam>();
+            ship.AddComponent<SurgicalBeam>();
 
             ship.transform.position = new Vector3(0f, 0f, 0f);
             ship.transform.rotation = Quaternion.identity;
