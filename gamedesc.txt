@@ -1,0 +1,152 @@
+PROJECT TITLE
+Pulse Vector: Inner Frontier
+
+CONCEPT SUMMARY
+Pulse Vector: Inner Frontier is an original Unity 3D action-adventure game inspired by classic micro-mission sci-fi. A specialized medical crew pilots a miniaturized bio-ship through a living human body to stop a cascading neural failure. The mission is short, intense, and designed for replayability through branching routes, changing hazards, and upgrade-driven gameplay.
+
+This is not a remake of any existing film. It is a new game concept that borrows broad genre themes only: miniaturization, time pressure, and biological traversal.
+
+GENRE AND FORMAT
+- Genre: Sci-fi Action Adventure + Vehicle Combat + Light Tactical Strategy
+- Camera: Third-person follow camera (ship-focused)
+- Engine: Unity 3D (URP recommended)
+- Mode: Single-player (core), co-op optional post-launch
+- Session length: 25 to 40 minutes per run
+
+HIGH-LEVEL PILLARS
+1. Time-critical navigation through dynamic biological environments.
+2. Tactical ship systems management under pressure.
+3. Cinematic set pieces driven by anatomy-based hazards.
+4. Meaningful progression through modules, pilot perks, and route decisions.
+
+GAMEPLAY LOOP
+1. Briefing: Choose crew loadout and ship modules.
+2. Insertion: Enter bloodstream at one of multiple entry points.
+3. Traverse: Pilot through arteries, heart turbulence, lung oxygen zones, and neural corridors.
+4. Solve and Survive: Handle immune threats, clot barriers, electrical storms, and system malfunctions.
+5. Operation: Execute precision sequence at target lesion.
+6. Extraction: Escape before re-expansion timer ends.
+7. Debrief and Upgrade: Spend mission rewards to unlock new modules and challenge tiers.
+
+CORE SYSTEMS
+- Ship Flight
+  - Arcade-sim hybrid controls with boost, brake, roll, and micro-stabilization.
+  - Collision damage based on speed and obstacle density.
+
+- Systems Management
+  - Four ship systems: Propulsion, Shields, Sensors, Surgical Array.
+  - Power routing mechanic: boost one system while weakening another.
+
+- Threat Model
+  - Reactive immune entities (macro-phage swarms, antibody nets).
+  - Environmental hazards (pulse surges, pressure spikes, clot fragmentation).
+  - Scripted crisis events (oxygen loss, comms blackout, EMP-like bioelectric pulse).
+
+- Objective Design
+  - Main objective plus optional side goals (collect bio-data, rescue nanodrones, map anomalies).
+  - Dynamic objective order on higher difficulties.
+
+- Progression
+  - Persistent upgrades between runs.
+  - Examples: shield harmonics, plasma cutter efficiency, extraction thruster cooldown.
+
+LEVEL STRUCTURE (SHORT CAMPAIGN)
+- Mission 1: Arterial Descent (tutorial + core controls)
+- Mission 2: Cardiac Maelstrom (timed turbulence + pressure gates)
+- Mission 3: Pulmonary Refit (oxygen and stealth sections)
+- Mission 4: Neural Corridor (precision navigation + electric hazards)
+- Mission 5: Lesion Strike and Extraction (boss-style finale)
+
+TECH RECOMMENDATION FOR YOUR INSTALLED UNITY 3D
+- Unity Version: 2022 LTS or newer
+- Render Pipeline: URP for high quality/performance balance
+- Input: New Input System package
+- AI/State Logic: Behavior trees or lightweight finite state machines
+- Audio: Unity Audio Mixer + snapshot transitions
+- Cinematics: Timeline + Cinemachine
+- Save System: JSON local save with ScriptableObject-backed config
+
+BEST PRACTICAL TOOL STACK (UNITY)
+- Core
+  - Unity Editor (URP template)
+  - Visual Studio or VS Code with C# tooling
+  - Git + Git LFS
+
+- Art and Asset Workflow
+  - Blender for custom mesh edits
+  - Substance 3D Painter or equivalent for PBR textures
+  - Mixamo for quick humanoid animation tests (if needed for crew scenes)
+
+- Audio
+  - FMOD or Wwise optional for advanced adaptive audio
+  - Audacity for cleanup and mastering
+
+- Project Management
+  - Trello/Notion/Jira for sprint planning
+  - Plastic SCM or GitHub for source control
+
+REALISTIC ASSETS AND SOUND DIRECTION
+- Visual style: Biological realism with sci-fi instrumentation overlays.
+- Materials: Wet tissue shaders, translucent membranes, volumetric particles.
+- Lighting: Pulsing emissive gradients tied to heartbeat and neural activity.
+- SFX: Layered engine hum, fluid turbulence, shield impact, bioelectric crackle.
+- Music: Tension-driven electronic orchestral hybrid with adaptive intensity.
+
+MVP BUILD PLAN (TO COMPLETION)
+Phase 1 (Week 1-2): Foundations
+- Set up project architecture, input, ship controller, base HUD.
+- Deliverable: Flyable prototype scene.
+
+Phase 2 (Week 3-4): Core Gameplay
+- Add hazards, damage model, timer, checkpoint flow.
+- Deliverable: End-to-end playable mission slice.
+
+Phase 3 (Week 5-6): Content and Systems
+- Add two new zones, enemy behaviors, module upgrades, save/load.
+- Deliverable: 3-mission alpha.
+
+Phase 4 (Week 7-8): Visual/Audio Polish
+- Integrate high-quality assets, VFX, adaptive audio, camera polish.
+- Deliverable: Beta-quality short campaign.
+
+Phase 5 (Week 9): QA and Performance
+- Fix bugs, optimize for stable frame rate, tune difficulty.
+- Deliverable: Release candidate.
+
+TEST STRATEGY (BUILD AS YOU GO)
+- Daily playtest checklist:
+  - Input responsiveness
+  - Collision reliability
+  - Objective completion and fail states
+  - Save/load integrity
+  - Performance budget compliance
+- Automated checks:
+  - Build verification each commit
+  - Script compile validation in CI
+  - Scene load sanity tests
+
+SUGGESTED FOLDER STRUCTURE
+Assets/
+  _Project/
+    Art/
+    Audio/
+    Materials/
+    Prefabs/
+    Scenes/
+    Scripts/
+      Core/
+      Gameplay/
+      UI/
+      AI/
+      Systems/
+    ScriptableObjects/
+    VFX/
+
+SUCCESS CRITERIA
+1. Complete 5-mission campaign in under 40 minutes on standard difficulty.
+2. Stable performance target (minimum 60 FPS on target hardware profile).
+3. Clear audiovisual feedback for all hazards and system states.
+4. No blocker bugs in insertion, operation, or extraction flow.
+
+TAGLINE
+Dive into living terrain, outmaneuver the body's defenses, and race the clock before your ship returns to full size.
