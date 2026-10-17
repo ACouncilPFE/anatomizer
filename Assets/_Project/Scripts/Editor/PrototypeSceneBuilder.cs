@@ -96,6 +96,9 @@ namespace AIGame.Editor
 
             AssetDatabase.Refresh();
 
+            // Save again: the spawner and weapon wiring above happens after the first save.
+            EditorSceneManager.SaveScene(scene, ScenePath);
+
             Debug.Log("[PrototypeSceneBuilder] Scene built and saved to: " + ScenePath);
             EditorUtility.DisplayDialog("Done", "Prototype scene created at:\n" + ScenePath + "\n\nPress Play to run. Left-click to fire.", "OK");
         }
@@ -134,12 +137,7 @@ namespace AIGame.Editor
 
         private static void ConfigureArteryAtmosphere()
         {
-            RenderSettings.ambientMode = AmbientMode.Flat;
-            RenderSettings.ambientLight = new Color(0.34f, 0.06f, 0.14f);
-            RenderSettings.fog = true;
-            RenderSettings.fogColor = new Color(0.42f, 0.06f, 0.18f);
-            RenderSettings.fogMode = FogMode.ExponentialSquared;
-            RenderSettings.fogDensity = 0.0125f;
+            ArteryEnvironment.ApplyAtmosphere();
         }
 
         private static GameObject CreateShip()
@@ -159,6 +157,7 @@ namespace AIGame.Editor
             ship.AddComponent<ShipController>();
             ship.AddComponent<ShipHealth>();
             ship.AddComponent<ShipSystems>();
+            ship.AddComponent<ShipPilot>();
 
             GameObject meshObj = GameObject.CreatePrimitive(PrimitiveType.Capsule);
             meshObj.name = "Mesh";
@@ -182,6 +181,10 @@ namespace AIGame.Editor
             weaponSO.FindProperty("firePoint").objectReferenceValue = firePoint.transform;
             weaponSO.FindProperty("fireRate").floatValue = 8f;
             weaponSO.ApplyModifiedPropertiesWithoutUndo();
+
+            // Co-pilot borrows the main gun's projectile and fire point.
+            ship.AddComponent<ShipCoPilot>();
+            ship.AddComponent<SurgicalBeam>();
 
             ship.transform.position = new Vector3(0f, 0f, 0f);
             ship.transform.rotation = Quaternion.identity;
@@ -395,198 +398,20 @@ namespace AIGame.Editor
 
         private static void CreateArteryEnvironment(Vector3 shipOrigin)
         {
+            // The sealed vessel, its lining, the blood flow and the ship's endoscope light all come
+            // from ArteryEnvironment (built from ArteryPath, which starts at the ship's origin).
             GameObject arteryRoot = new GameObject("ArteryTunnel");
 
-            Material wallMat = CreateOrUpdateEnemyMaterial("ArteryWall", new Color(0.72f, 0.12f, 0.2f));
-            wallMat.EnableKeyword("_EMISSION");
-            wallMat.SetColor("_EmissionColor", new Color(0.32f, 0.05f, 0.11f));
-            wallMat.SetFloat("_Glossiness", 0.08f);
-
-            Material glowMat = CreateOrUpdateTransparentMaterial("ArteryGlow", new Color(0.95f, 0.22f, 0.62f, 0.08f));
-            Material bloodMat = CreateOrUpdateEnemyMaterial("BloodCell", new Color(0.72f, 0.08f, 0.14f));
-
-            GameObject tubeObj = new GameObject("ArteryTubeMesh");
+            GameObject tubeObj = new GameObject(ArteryEnvironment.TunnelObjectName);
             tubeObj.transform.SetParent(arteryRoot.transform, false);
-            tubeObj.transform.position = shipOrigin;
 
-            MeshFilter meshFilter = tubeObj.AddComponent<MeshFilter>();
-            MeshRenderer meshRenderer = tubeObj.AddComponent<MeshRenderer>();
-            meshRenderer.sharedMaterial = wallMat;
-            meshFilter.sharedMesh = BuildArteryTubeMesh(150f, 6.5f, 4f, 80, 36);
-
-            // Add a static Rigidbody to make the tube a collider-only body
+            // A kinematic body makes the tube a collider-only object.
             Rigidbody tubeRb = tubeObj.AddComponent<Rigidbody>();
             tubeRb.isKinematic = true;
             tubeRb.useGravity = false;
 
-            // Configure MeshCollider with proper cooking options for hollow mesh
-            MeshCollider tubeCollider = tubeObj.AddComponent<MeshCollider>();
-            tubeCollider.sharedMesh = null; // Reset before reassigning
-            tubeCollider.convex = false;
-            tubeCollider.cookingOptions = MeshColliderCookingOptions.CookForFasterSimulation | MeshColliderCookingOptions.WeldColocatedVertices;
-            tubeCollider.sharedMesh = meshFilter.sharedMesh;
-
-            // Subtle glow layers inside the tube.
-            for (int i = 0; i < 12; i++)
-            {
-                GameObject glow = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-                glow.name = "ArteryGlow_" + i;
-                glow.transform.SetParent(arteryRoot.transform, false);
-                glow.transform.position = shipOrigin + new Vector3(0f, 0f, 8f + i * 12f);
-                glow.transform.localScale = new Vector3(22f, 13.5f, 15f);
-
-                Renderer renderer = glow.GetComponent<Renderer>();
-                if (renderer != null)
-                {
-                    renderer.sharedMaterial = glowMat;
-                }
-
-                Collider glowCollider = glow.GetComponent<Collider>();
-                if (glowCollider != null)
-                {
-                    Object.DestroyImmediate(glowCollider);
-                }
-            }
-
-            // Add floating red blood cells for visual motion and scale cues.
-            for (int i = 0; i < 42; i++)
-            {
-                GameObject cell = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-                cell.name = "BloodCell_" + i;
-                cell.transform.SetParent(arteryRoot.transform, false);
-
-                float rz = Random.Range(14f, 140f);
-                float centerX = Mathf.Sin(rz * 0.045f) * 2.6f;
-                float centerY = Mathf.Sin(rz * 0.03f + 1.1f) * 1.6f;
-
-                float pulsation = 1f + Mathf.Sin(rz * 0.11f) * 0.06f;
-                float tubeRx = 6.5f * pulsation;
-                float tubeRy = 4f * pulsation;
-                float angle = Random.Range(0f, Mathf.PI * 2f);
-                float radial01 = Mathf.Sqrt(Random.value) * 0.72f;
-                float rx = centerX + Mathf.Cos(angle) * tubeRx * radial01;
-                float ry = centerY + Mathf.Sin(angle) * tubeRy * radial01;
-
-                cell.transform.position = shipOrigin + new Vector3(rx, ry, rz);
-                cell.transform.localScale = new Vector3(1.15f, 0.3f, 0.95f);
-                cell.transform.rotation = Quaternion.Euler(Random.Range(-18f, 18f), Random.Range(0f, 360f), Random.Range(-20f, 20f));
-
-                Renderer renderer = cell.GetComponent<Renderer>();
-                if (renderer != null)
-                {
-                    renderer.sharedMaterial = bloodMat;
-                }
-
-                Collider cellCollider = cell.GetComponent<Collider>();
-                if (cellCollider != null)
-                {
-                    Object.DestroyImmediate(cellCollider);
-                }
-            }
-        }
-
-        private static Mesh BuildArteryTubeMesh(float length, float radiusX, float radiusY, int ringCount, int sides)
-        {
-            Mesh mesh = new Mesh { name = "ArteryTube" };
-
-            int vertexCount = ringCount * sides;
-            Vector3[] vertices = new Vector3[vertexCount];
-            Vector3[] normals = new Vector3[vertexCount];
-            Vector2[] uvs = new Vector2[vertexCount];
-
-            int quadCount = (ringCount - 1) * sides;
-            int[] triangles = new int[quadCount * 12]; // double-sided
-            int triIndex = 0;
-
-            for (int ring = 0; ring < ringCount; ring++)
-            {
-                float v = ringCount <= 1 ? 0f : ring / (float)(ringCount - 1);
-                float z = v * length;
-
-                float centerX = Mathf.Sin(z * 0.045f) * 2.6f;
-                float centerY = Mathf.Sin(z * 0.03f + 1.1f) * 1.6f;
-                Vector3 center = new Vector3(centerX, centerY, z);
-
-                float pulsation = 1f + Mathf.Sin(z * 0.11f) * 0.06f;
-                float rx = radiusX * pulsation;
-                float ry = radiusY * pulsation;
-
-                for (int side = 0; side < sides; side++)
-                {
-                    float u = side / (float)sides;
-                    float angle = u * Mathf.PI * 2f;
-                    int index = ring * sides + side;
-
-                    float x = Mathf.Cos(angle) * rx;
-                    float y = Mathf.Sin(angle) * ry;
-
-                    vertices[index] = center + new Vector3(x, y, 0f);
-                    normals[index] = -new Vector3(Mathf.Cos(angle) / Mathf.Max(rx, 0.001f), Mathf.Sin(angle) / Mathf.Max(ry, 0.001f), 0f).normalized;
-                    uvs[index] = new Vector2(u, v);
-
-                    if (ring >= ringCount - 1)
-                    {
-                        continue;
-                    }
-
-                    int nextSide = (side + 1) % sides;
-                    int current = index;
-                    int currentNext = ring * sides + nextSide;
-                    int upper = (ring + 1) * sides + side;
-                    int upperNext = (ring + 1) * sides + nextSide;
-
-                    // Front-facing for inside
-                    triangles[triIndex++] = current;
-                    triangles[triIndex++] = upper;
-                    triangles[triIndex++] = currentNext;
-                    triangles[triIndex++] = currentNext;
-                    triangles[triIndex++] = upper;
-                    triangles[triIndex++] = upperNext;
-
-                    // Reverse side for robustness
-                    triangles[triIndex++] = currentNext;
-                    triangles[triIndex++] = upper;
-                    triangles[triIndex++] = current;
-                    triangles[triIndex++] = upperNext;
-                    triangles[triIndex++] = upper;
-                    triangles[triIndex++] = currentNext;
-                }
-            }
-
-            mesh.vertices = vertices;
-            mesh.normals = normals;
-            mesh.uv = uvs;
-            mesh.triangles = triangles;
-            mesh.RecalculateBounds();
-            return mesh;
-        }
-
-        private static Material CreateOrUpdateTransparentMaterial(string materialName, Color color)
-        {
-            Directory.CreateDirectory("Assets/_Project/Materials");
-            string matPath = $"Assets/_Project/Materials/{materialName}.mat";
-
-            Material mat = AssetDatabase.LoadAssetAtPath<Material>(matPath);
-            if (mat == null)
-            {
-                mat = new Material(Shader.Find("Standard"));
-                AssetDatabase.CreateAsset(mat, matPath);
-            }
-
-            mat.SetFloat("_Mode", 2f);
-            mat.SetInt("_SrcBlend", (int)BlendMode.SrcAlpha);
-            mat.SetInt("_DstBlend", (int)BlendMode.OneMinusSrcAlpha);
-            mat.SetInt("_ZWrite", 0);
-            mat.DisableKeyword("_ALPHATEST_ON");
-            mat.EnableKeyword("_ALPHABLEND_ON");
-            mat.DisableKeyword("_ALPHAPREMULTIPLY_ON");
-            mat.renderQueue = (int)RenderQueue.Transparent;
-            mat.color = color;
-            mat.SetFloat("_Glossiness", 0f);
-            mat.EnableKeyword("_EMISSION");
-            mat.SetColor("_EmissionColor", new Color(color.r, color.g, color.b) * 0.95f);
-            EditorUtility.SetDirty(mat);
-            return mat;
+            // Builds the wall now so the scene view shows it; it is rebuilt fresh at play time.
+            tubeObj.AddComponent<ArteryEnvironment>().BuildWall();
         }
 
         private static void CreateHUD()

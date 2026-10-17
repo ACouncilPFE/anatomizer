@@ -1,5 +1,6 @@
 using AIGame.AI;
 using AIGame.Core;
+using AIGame.Gameplay;
 using System;
 using System.Collections.Generic;
 using UnityEngine;
@@ -32,6 +33,14 @@ namespace AIGame.Systems
         [SerializeField] private MissionZone currentZone = MissionZone.Artery;
         [SerializeField] private List<ZoneSpawnBinding> zoneBindings = new List<ZoneSpawnBinding>();
 
+        [Header("Artery spawning")]
+        [Tooltip("Spawn cells inside the artery ahead of the ship instead of at the fixed spawn points.")]
+        [SerializeField] private bool spawnAlongArtery = true;
+        [SerializeField] private Vector2 spawnDistanceAhead = new Vector2(25f, 70f);
+        [SerializeField, Range(0f, 1f)] private float maxSpawnRadialFraction = 0.55f;
+
+        private Transform ship;
+
         private readonly List<EnemyAgent> aliveEnemies = new List<EnemyAgent>();
         private ZoneSpawnBinding activeBinding;
         private float nextSpawnTime;
@@ -54,7 +63,13 @@ namespace AIGame.Systems
                 return;
             }
 
-            if (activeBinding == null || activeBinding.profile == null || activeBinding.profile.enemyPrefab == null || activeBinding.spawnPoints == null || activeBinding.spawnPoints.Length == 0)
+            if (activeBinding == null || activeBinding.profile == null || activeBinding.profile.enemyPrefab == null)
+            {
+                return;
+            }
+
+            bool hasSpawnPoints = activeBinding.spawnPoints != null && activeBinding.spawnPoints.Length > 0;
+            if (!spawnAlongArtery && !hasSpawnPoints)
             {
                 return;
             }
@@ -90,13 +105,48 @@ namespace AIGame.Systems
 
         private void SpawnEnemy()
         {
-            Transform spawnPoint = activeBinding.spawnPoints[UnityEngine.Random.Range(0, activeBinding.spawnPoints.Length)];
-            EnemyAgent enemy = Instantiate(activeBinding.profile.enemyPrefab, spawnPoint.position, spawnPoint.rotation);
+            Vector3 position;
+            Quaternion rotation;
+            if (spawnAlongArtery)
+            {
+                position = RandomPointAheadInArtery();
+                rotation = Quaternion.LookRotation(Vector3.back); // facing the oncoming ship
+            }
+            else
+            {
+                Transform spawnPoint = activeBinding.spawnPoints[UnityEngine.Random.Range(0, activeBinding.spawnPoints.Length)];
+                position = spawnPoint.position;
+                rotation = spawnPoint.rotation;
+            }
+
+            EnemyAgent enemy = Instantiate(activeBinding.profile.enemyPrefab, position, rotation);
 
             EnemyArchetype archetype = RollArchetype(activeBinding.profile.archetypeWeights);
             enemy.ConfigureArchetype(archetype);
+            enemy.ConfigureCondition(UnityEngine.Random.value < activeBinding.profile.curableChance
+                ? CellCondition.Infected
+                : CellCondition.Malignant);
 
             aliveEnemies.Add(enemy);
+        }
+
+        private Vector3 RandomPointAheadInArtery()
+        {
+            if (ship == null)
+            {
+                ShipController controller = FindObjectOfType<ShipController>();
+                ship = controller != null ? controller.transform : null;
+            }
+
+            float shipZ = ship != null ? ship.position.z : 0f;
+            float z = Mathf.Clamp(shipZ + UnityEngine.Random.Range(spawnDistanceAhead.x, spawnDistanceAhead.y),
+                ArteryPath.MinTravelZ + 2f, ArteryPath.MaxTravelZ - 2f);
+
+            Vector3 center = ArteryPath.CenterAt(z);
+            Vector2 radii = ArteryPath.RadiiAt(z);
+            float angle = UnityEngine.Random.Range(0f, Mathf.PI * 2f);
+            float radial = Mathf.Sqrt(UnityEngine.Random.value) * maxSpawnRadialFraction;
+            return center + new Vector3(Mathf.Cos(angle) * radii.x * radial, Mathf.Sin(angle) * radii.y * radial, 0f);
         }
 
         private EnemyArchetype RollArchetype(List<ZoneArchetypeWeight> weights)
