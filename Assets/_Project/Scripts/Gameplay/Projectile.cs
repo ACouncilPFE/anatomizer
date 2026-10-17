@@ -54,6 +54,32 @@ namespace AIGame.Gameplay
             Configure(newEffect);
         }
 
+        /// <summary>
+        /// Builds an inactive projectile to clone from, matching the scene builder's prefab:
+        /// a small glowing sphere with a trigger collider on a kinematic body.
+        /// </summary>
+        public static Projectile CreateRuntimeTemplate()
+        {
+            GameObject root = new GameObject("Projectile (runtime template)");
+            root.SetActive(false);
+            Object.DontDestroyOnLoad(root);
+
+            SphereCollider col = root.AddComponent<SphereCollider>();
+            col.isTrigger = true;
+            col.radius = 0.3f;
+            Rigidbody rb = root.AddComponent<Rigidbody>();
+            rb.useGravity = false;
+            rb.isKinematic = true;
+
+            GameObject mesh = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+            mesh.name = "Mesh";
+            Object.Destroy(mesh.GetComponent<Collider>());
+            mesh.transform.SetParent(root.transform, false);
+            mesh.transform.localScale = Vector3.one * 0.3f;
+
+            return root.AddComponent<Projectile>();
+        }
+
         private void OnEnable()
         {
             Invoke(nameof(Despawn), lifetime);

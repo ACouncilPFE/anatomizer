@@ -11,7 +11,22 @@ namespace AIGame.Gameplay
 
         private float nextFireTime;
 
-        public Projectile ProjectilePrefab => projectilePrefab;
+        /// <summary>
+        /// The round the main gun (and the co-pilot) fires. If the scene never had one assigned,
+        /// a plain round is built at runtime so the guns still work.
+        /// </summary>
+        public Projectile ProjectilePrefab
+        {
+            get
+            {
+                if (projectilePrefab == null)
+                {
+                    projectilePrefab = Projectile.CreateRuntimeTemplate();
+                }
+                return projectilePrefab;
+            }
+        }
+
         public Transform FirePoint => firePoint;
 
         private void Update()
@@ -40,13 +55,14 @@ namespace AIGame.Gameplay
 
         private void Fire(ProjectileEffect effect)
         {
-            if (projectilePrefab == null || firePoint == null)
+            if (firePoint == null)
             {
                 return;
             }
 
-            Projectile shot = Instantiate(projectilePrefab, firePoint.position, firePoint.rotation);
+            Projectile shot = Instantiate(ProjectilePrefab, firePoint.position, firePoint.rotation);
             shot.Configure(effect);
+            shot.gameObject.SetActive(true); // the runtime template is kept inactive
             nextFireTime = Time.time + 1f / fireRate;
         }
     }

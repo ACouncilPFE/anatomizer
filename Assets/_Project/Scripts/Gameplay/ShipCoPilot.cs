@@ -146,6 +146,7 @@ namespace AIGame.Gameplay
             Vector3 aim = enemy.transform.position - firePoint.position;
             Projectile shot = Instantiate(projectilePrefab, firePoint.position, Quaternion.LookRotation(aim.normalized));
             shot.Configure(enemy.IsCurable ? ProjectileEffect.Repair : ProjectileEffect.Damage);
+            shot.gameObject.SetActive(true); // the runtime template is kept inactive
 
             nextFireTime = Time.time + 1f / Mathf.Max(fireRate, 0.01f);
         }

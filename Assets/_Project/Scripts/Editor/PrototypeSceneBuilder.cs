@@ -96,6 +96,9 @@ namespace AIGame.Editor
 
             AssetDatabase.Refresh();
 
+            // Save again: the spawner and weapon wiring above happens after the first save.
+            EditorSceneManager.SaveScene(scene, ScenePath);
+
             Debug.Log("[PrototypeSceneBuilder] Scene built and saved to: " + ScenePath);
             EditorUtility.DisplayDialog("Done", "Prototype scene created at:\n" + ScenePath + "\n\nPress Play to run. Left-click to fire.", "OK");
         }

@@ -46,6 +46,33 @@ namespace AIGame.UI
 
             GUI.color = Color.white;
             GUI.matrix = previousMatrix;
+
+            DrawCrosshair(shipHealth.transform);
+        }
+
+        // Where the guns and beam point: a small cross ahead of the nose.
+        private void DrawCrosshair(Transform ship)
+        {
+            Camera cam = Camera.main;
+            if (cam == null)
+            {
+                return;
+            }
+
+            Vector3 screen = cam.WorldToScreenPoint(ship.position + ship.forward * 30f);
+            if (screen.z <= 0f)
+            {
+                return;
+            }
+
+            float x = screen.x;
+            float y = Screen.height - screen.y;
+            GUI.color = new Color(0.7f, 1f, 1f, 0.85f);
+            GUI.DrawTexture(new Rect(x - 12f, y - 1f, 9f, 2f), Texture2D.whiteTexture);
+            GUI.DrawTexture(new Rect(x + 3f, y - 1f, 9f, 2f), Texture2D.whiteTexture);
+            GUI.DrawTexture(new Rect(x - 1f, y - 12f, 2f, 9f), Texture2D.whiteTexture);
+            GUI.DrawTexture(new Rect(x - 1f, y + 3f, 2f, 9f), Texture2D.whiteTexture);
+            GUI.color = Color.white;
         }
 
         private void DrawMission(GameManager gameMan)
