@@ -13,13 +13,37 @@ namespace AIGame.Core
         [Header("Progress")]
         [SerializeField] private int requiredObjectives = 5;
 
+        [Header("Cell Treatment")]
+        [Tooltip("Correct treatments to win: cure an infected cell, or destroy a malignant one.")]
+        [SerializeField] private int requiredTreatments = 12;
+        [Tooltip("Curable cells you may destroy before the mission fails.")]
+        [SerializeField] private int maxHealthyCellsLost = 5;
+
         private float remainingTime;
         private int completedObjectives;
+        private int cellsTreated;
+        private int healthyCellsLost;
 
         public GameState CurrentState { get; private set; } = GameState.Briefing;
         public float RemainingTime => remainingTime;
         public int RequiredObjectives => requiredObjectives;
         public int CompletedObjectives => completedObjectives;
+        public int CellsTreated => cellsTreated;
+        public int RequiredTreatments => requiredTreatments;
+        public int HealthyCellsLost => healthyCellsLost;
+        public int MaxHealthyCellsLost => maxHealthyCellsLost;
+
+        private void OnEnable()
+        {
+            GameEvents.OnCellRepaired += HandleCellCured;
+            GameEvents.OnCellDestroyed += HandleCellDestroyed;
+        }
+
+        private void OnDisable()
+        {
+            GameEvents.OnCellRepaired -= HandleCellCured;
+            GameEvents.OnCellDestroyed -= HandleCellDestroyed;
+        }
 
         private void Awake()
         {
@@ -63,6 +87,8 @@ namespace AIGame.Core
         {
             remainingTime = missionDurationSeconds;
             completedObjectives = 0;
+            cellsTreated = 0;
+            healthyCellsLost = 0;
             GameEvents.RaiseObjectiveProgressChanged(completedObjectives, requiredObjectives);
             SetState(GameState.InMission);
             Time.timeScale = 1f;
@@ -98,6 +124,47 @@ namespace AIGame.Core
             GameEvents.RaiseObjectiveProgressChanged(completedObjectives, requiredObjectives);
 
             if (completedObjectives >= requiredObjectives)
+            {
+                CompleteMission();
+            }
+        }
+
+        // Curing an infected cell is always the right call.
+        private void HandleCellCured()
+        {
+            RegisterCorrectTreatment();
+        }
+
+        // Destroying a malignant cell is right; destroying a curable one wastes healthy tissue.
+        private void HandleCellDestroyed(bool wasCurable)
+        {
+            if (CurrentState != GameState.InMission)
+            {
+                return;
+            }
+
+            if (!wasCurable)
+            {
+                RegisterCorrectTreatment();
+                return;
+            }
+
+            healthyCellsLost++;
+            if (healthyCellsLost >= maxHealthyCellsLost)
+            {
+                FailMission();
+            }
+        }
+
+        private void RegisterCorrectTreatment()
+        {
+            if (CurrentState != GameState.InMission)
+            {
+                return;
+            }
+
+            cellsTreated++;
+            if (cellsTreated >= requiredTreatments)
             {
                 CompleteMission();
             }

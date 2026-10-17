@@ -22,6 +22,19 @@ namespace AIGame.Tests.EditMode
         }
 
         [Test]
+        public void Artery_IsSealedAtBothEnds_AndOpenWhereTheShipTravels()
+        {
+            Assert.AreEqual(0f, ArteryPath.CapTaper(ArteryPath.StartZ), 0.0001f, "Near end must close.");
+            Assert.AreEqual(0f, ArteryPath.CapTaper(ArteryPath.EndZ), 0.0001f, "Far end must close.");
+            Assert.AreEqual(0f, ArteryPath.RadiiAt(ArteryPath.EndZ + 5f).x, 0.0001f, "Nothing beyond the sealed end.");
+
+            for (float z = ArteryPath.MinTravelZ - 1f; z <= ArteryPath.MaxTravelZ + 1f; z += 1f)
+            {
+                Assert.AreEqual(1f, ArteryPath.CapTaper(z), 0.0001f, $"Vessel must be full width at z={z}.");
+            }
+        }
+
+        [Test]
         public void ClampInside_LeavesPointsNearTheCentreAlone()
         {
             Vector3 point = ArteryPath.CenterAt(40f) + new Vector3(1f, 0.5f, 0f);

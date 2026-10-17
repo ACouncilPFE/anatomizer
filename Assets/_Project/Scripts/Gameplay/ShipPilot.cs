@@ -7,7 +7,7 @@ namespace AIGame.Gameplay
     /// The pilot crew member. Two jobs:
     ///
     ///   1. Always: keep the capsule inside the artery. After ShipController has moved the ship
-    ///      each physics step, the pilot puts it back inside the wall (and both ends of the vessel)
+    ///      each physics step, the pilot puts it back inside the wall (and short of both sealed ends)
     ///      and cancels any velocity heading into the wall. The mesh collider alone can't do this;
     ///      a fast capsule slips through a thin, hollow mesh.
     ///   2. Autopilot (toggle with P, or X on the left VR controller): the pilot flies the ship down
@@ -32,8 +32,7 @@ namespace AIGame.Gameplay
         [Header("Boundaries")]
         [SerializeField, Range(0.3f, 1f)] private float maxWallFraction = 0.85f; // how close to the wall the pilot allows
         [SerializeField] private float hullClearance = 0.5f;                      // metres kept between hull and wall
-        [SerializeField] private float entryZ        = 0.5f;                      // don't back out of the artery mouth
-        [SerializeField] private float exitMargin    = 3f;                        // stop this far before the far end
+        // Travel along the vessel is limited to ArteryPath.MinTravelZ..MaxTravelZ, short of the sealed ends.
 
         [Header("Autopilot")]
         [SerializeField, Range(0f, 1f)] private float cruiseThrottle = 0.55f;
@@ -90,7 +89,7 @@ namespace AIGame.Gameplay
             Vector3 position = transform.position;
 
             // Heading: point the nose along the artery a little way ahead.
-            float aheadZ = Mathf.Clamp(position.z + lookAheadDistance, 0f, ArteryPath.Length);
+            float aheadZ = Mathf.Clamp(position.z + lookAheadDistance, ArteryPath.MinTravelZ, ArteryPath.MaxTravelZ);
             Vector3 localHeading = transform.InverseTransformDirection(ArteryPath.TangentAt(aheadZ));
             float yawError   = Mathf.Atan2(localHeading.x, localHeading.z) * Mathf.Rad2Deg;
             float pitchError = Mathf.Atan2(localHeading.y, new Vector2(localHeading.x, localHeading.z).magnitude) * Mathf.Rad2Deg;
@@ -100,7 +99,7 @@ namespace AIGame.Gameplay
             // Throttle: cruise unless the player is throttling, and ease off before the far end.
             if (Mathf.Abs(input.Forward) < InputDeadzone)
             {
-                float remaining = (ArteryPath.Length - exitMargin) - position.z;
+                float remaining = ArteryPath.MaxTravelZ - position.z;
                 input.Forward = cruiseThrottle * Mathf.Clamp01(remaining / Mathf.Max(slowDownDistance, 0.01f));
             }
 
@@ -126,7 +125,7 @@ namespace AIGame.Gameplay
             }
 
             Vector3 position = rb.position;
-            if (!ArteryPath.ClampInside(ref position, maxWallFraction, hullClearance, entryZ, ArteryPath.Length - exitMargin, out Vector3 outward))
+            if (!ArteryPath.ClampInside(ref position, maxWallFraction, hullClearance, ArteryPath.MinTravelZ, ArteryPath.MaxTravelZ, out Vector3 outward))
             {
                 return;
             }

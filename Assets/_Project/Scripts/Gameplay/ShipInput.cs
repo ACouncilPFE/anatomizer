@@ -7,14 +7,15 @@ namespace AIGame.Gameplay
     /// One place that reads ship controls, so the same ship flies on a flat screen and in VR.
     ///
     /// Desktop (unchanged from before):
-    ///   W/S forward, A/D strafe, E/Q rise/descend, Shift boost, Z/C roll, mouse steer, left click fire.
-    ///   P autopilot on/off (ShipPilot), R co-pilot off/destroy/repair (ShipCoPilot).
+    ///   W/S forward, A/D strafe, E/Q rise/descend, Shift boost, Z/C roll, mouse steer.
+    ///   Left click destroy round, right click medicine round.
+    ///   P autopilot on/off (ShipPilot), R co-pilot on/off (ShipCoPilot).
     /// VR controllers (Quest-style, read through UnityEngine.XR so it works with any OpenXR headset):
     ///   Left stick   throttle (Y) and strafe (X)
     ///   Right stick  steer: yaw (X) and pitch (Y)
-    ///   Left trigger boost, right trigger fire
+    ///   Left trigger boost, right trigger destroy round, B (right) medicine round
     ///   Right grip   rise, left grip descend
-    ///   X (left)     autopilot on/off, A (right) co-pilot off/destroy/repair
+    ///   X (left)     autopilot on/off, A (right) co-pilot on/off
     ///   No roll in VR: the cockpit stays level for comfort.
     ///
     /// Both sources are added together, so a keyboard still works while a headset is on.
@@ -30,7 +31,8 @@ namespace AIGame.Gameplay
             public float Pitch;    // mouse-delta units (desktop) or -1..+1 (stick)
             public float Roll;     // -1..+1
             public bool  Boost;
-            public bool  Fire;
+            public bool  Fire;           // destroy round
+            public bool  FireMedicine;   // medicine round
             public bool  TogglePilot;    // held state; ShipPilot acts on the press
             public bool  ToggleCoPilot;  // held state; ShipCoPilot acts on the press
         }
@@ -63,6 +65,7 @@ namespace AIGame.Gameplay
                 Roll    = (Input.GetKey(KeyCode.Z) ? 1f : 0f) - (Input.GetKey(KeyCode.C) ? 1f : 0f),
                 Boost   = Input.GetKey(KeyCode.LeftShift),
                 Fire    = Input.GetMouseButton(0),
+                FireMedicine  = Input.GetMouseButton(1),
                 TogglePilot   = Input.GetKey(KeyCode.P),
                 ToggleCoPilot = Input.GetKey(KeyCode.R),
             };
@@ -88,6 +91,7 @@ namespace AIGame.Gameplay
             s.Boost |= ReadFloat(left,  CommonUsages.trigger) > ButtonThreshold;
             s.Fire  |= ReadFloat(right, CommonUsages.trigger) > ButtonThreshold;
 
+            s.FireMedicine  |= ReadBool(right, CommonUsages.secondaryButton);
             s.TogglePilot   |= ReadBool(left,  CommonUsages.primaryButton);
             s.ToggleCoPilot |= ReadBool(right, CommonUsages.primaryButton);
         }

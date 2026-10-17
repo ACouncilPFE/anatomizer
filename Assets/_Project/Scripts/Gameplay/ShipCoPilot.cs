@@ -5,26 +5,23 @@ using UnityEngine;
 namespace AIGame.Gameplay
 {
     /// <summary>
-    /// The co-pilot crew member: picks out bad cells ahead of the ship and shoots them, so you
-    /// can concentrate on flying.
+    /// The co-pilot crew member: picks out bad cells ahead of the ship and treats them the right
+    /// way, so you can concentrate on flying.
     ///
-    ///   Off           (default) the co-pilot holds fire; all shooting is yours.
-    ///   Destroy mode  fires damage rounds that kill the cell.
-    ///   Repair mode   fires repair rounds that heal the cell back into a harmless one.
-    /// R (or A on the right VR controller) cycles Off -> Destroy -> Repair -> Off.
+    ///   Off   (default) the co-pilot holds fire; all shooting is yours.
+    ///   Treat medicine rounds for infected cells, destroy rounds for malignant ones.
+    /// R (or A on the right VR controller) switches between them.
     ///
     /// The co-pilot only engages cells in front of the ship, within range and with a clear line of
     /// sight (the artery wall blocks shots). It fires from the ship's WeaponSystem fire point using
-    /// the same projectile prefab, so it needs no extra scene setup. Your own trigger still fires
-    /// the main gun.
+    /// the same projectile prefab, so it needs no extra scene setup.
     /// </summary>
     public class ShipCoPilot : MonoBehaviour
     {
         public enum Mode
         {
             Off,
-            Destroy,
-            Repair
+            Treat
         }
 
         [SerializeField] private Mode mode = Mode.Off;
@@ -35,22 +32,16 @@ namespace AIGame.Gameplay
         [SerializeField] private LayerMask lineOfSightMask = ~0;
 
         [Header("Firing")]
-        [SerializeField] private float fireRate     = 4f;
-        [SerializeField] private float damagePerShot = 10f;
-        [SerializeField] private float repairPerShot = 15f;
+        [SerializeField] private float fireRate = 4f;
         [SerializeField] private Projectile projectilePrefab; // falls back to the WeaponSystem's
         [SerializeField] private Transform firePoint;         // falls back to the WeaponSystem's
 
         private float nextFireTime;
         private bool toggleHeld;
         private EnemyAgent target;
-        private int destroyedCount;
-        private int repairedCount;
 
         public Mode CurrentMode => mode;
         public EnemyAgent CurrentTarget => target;
-        public int DestroyedCount => destroyedCount;
-        public int RepairedCount => repairedCount;
 
         private void Awake()
         {
@@ -66,21 +57,6 @@ namespace AIGame.Gameplay
             }
         }
 
-        private void OnEnable()
-        {
-            GameEvents.OnCellDestroyed += HandleCellDestroyed;
-            GameEvents.OnCellRepaired  += HandleCellRepaired;
-        }
-
-        private void OnDisable()
-        {
-            GameEvents.OnCellDestroyed -= HandleCellDestroyed;
-            GameEvents.OnCellRepaired  -= HandleCellRepaired;
-        }
-
-        private void HandleCellDestroyed() => destroyedCount++;
-        private void HandleCellRepaired()  => repairedCount++;
-
         public void SetMode(Mode newMode)
         {
             mode = newMode;
@@ -91,7 +67,7 @@ namespace AIGame.Gameplay
             bool toggle = ShipInput.Read().ToggleCoPilot;
             if (toggle && !toggleHeld)
             {
-                SetMode((Mode)(((int)mode + 1) % 3));
+                SetMode(mode == Mode.Off ? Mode.Treat : Mode.Off);
             }
             toggleHeld = toggle;
 
@@ -169,14 +145,7 @@ namespace AIGame.Gameplay
 
             Vector3 aim = enemy.transform.position - firePoint.position;
             Projectile shot = Instantiate(projectilePrefab, firePoint.position, Quaternion.LookRotation(aim.normalized));
-            if (mode == Mode.Repair)
-            {
-                shot.Configure(ProjectileEffect.Repair, repairPerShot);
-            }
-            else
-            {
-                shot.Configure(ProjectileEffect.Damage, damagePerShot);
-            }
+            shot.Configure(enemy.IsCurable ? ProjectileEffect.Repair : ProjectileEffect.Damage);
 
             nextFireTime = Time.time + 1f / Mathf.Max(fireRate, 0.01f);
         }

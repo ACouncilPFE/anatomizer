@@ -25,6 +25,8 @@ namespace AIGame.AI
 
         [Header("Identity")]
         [SerializeField] private EnemyArchetype archetype = EnemyArchetype.MacrophageSwarm;
+        [Tooltip("Infected cells can be cured with medicine; malignant ones must be destroyed.")]
+        [SerializeField] private CellCondition condition = CellCondition.Infected;
 
         [Header("Combat")]
         [SerializeField] private float maxHealth = 60f;
@@ -39,9 +41,12 @@ namespace AIGame.AI
         [SerializeField] private float patrolRadius = 14f;
 
         [Header("Repair")]
-        [SerializeField] private float repairRequired = 45f;        // repair points to turn this cell healthy
-        [SerializeField] private float repairedLingerSeconds = 3f;  // healed cell stays visible, then leaves
-        [SerializeField] private Color repairedColor = new Color(0.85f, 0.15f, 0.22f); // healthy red cell
+        [SerializeField] private float repairRequired = 45f;        // medicine needed to cure an infected cell
+        [SerializeField] private float repairedLingerSeconds = 3f;  // cured cell stays visible, then leaves
+
+        [Header("Artery")]
+        [SerializeField, Range(0.3f, 1f)] private float maxWallFraction = 0.8f; // cells stay inside the vessel
+        [SerializeField] private float wallClearance = 1f;
 
         private EnemyPerception perception;
         private Transform shipTarget;
@@ -54,12 +59,20 @@ namespace AIGame.AI
         private float currentHealth;
         private float nextAttackTime;
         private float repairProgress;
+        private float lastResistedTime = -999f;
+        private DiseasedCellVisual visual;
 
         public EnemyAgentState CurrentState => currentState;
         public EnemyArchetype Archetype => archetype;
         /// <summary>False once the cell is destroyed or repaired; nothing should shoot it then.</summary>
         public bool IsHostile => currentState != EnemyAgentState.Dead && currentState != EnemyAgentState.Repaired;
         public float RepairProgress01 => repairRequired <= 0f ? 1f : Mathf.Clamp01(repairProgress / repairRequired);
+        public float Health01 => maxHealth <= 0f ? 0f : Mathf.Clamp01(currentHealth / maxHealth);
+        public CellCondition Condition => condition;
+        /// <summary>Infected cells can be cured; destroying one wastes a cell that could have been saved.</summary>
+        public bool IsCurable => condition == CellCondition.Infected;
+        /// <summary>True for a moment after medicine hit a malignant cell and did nothing.</summary>
+        public bool JustResistedMedicine => Time.time - lastResistedTime < 0.6f;
 
         private void OnEnable()
         {
@@ -82,31 +95,16 @@ namespace AIGame.AI
 
         private void Start()
         {
-            SetArchetypeColor();
+            visual = GetComponent<DiseasedCellVisual>();
+            if (visual == null)
+            {
+                visual = gameObject.AddComponent<DiseasedCellVisual>();
+            }
+            visual.Apply(condition);
+
             AcquireShipReferences();
             SelectNewPatrolTarget();
             ApplyArchetypeTuning();
-        }
-
-        private void SetArchetypeColor()
-        {
-            Color color = archetype switch
-            {
-                EnemyArchetype.MacrophageSwarm => new Color(0.98f, 0.98f, 1f),
-                EnemyArchetype.AntibodyNet => new Color(0.9f, 0.95f, 1f),
-                EnemyArchetype.BioelectricDisruptor => new Color(1f, 0.96f, 0.98f),
-                _ => Color.white
-            };
-
-            Renderer renderer = GetComponentInChildren<Renderer>();
-            if (renderer != null)
-            {
-                Material mat = renderer.material;
-                mat.color = color;
-                mat.SetFloat("_Glossiness", 0.55f);
-                mat.EnableKeyword("_EMISSION");
-                mat.SetColor("_EmissionColor", color * 0.25f);
-            }
         }
 
         private void Update()
@@ -149,19 +147,26 @@ namespace AIGame.AI
             if (currentHealth <= 0f)
             {
                 currentState = EnemyAgentState.Dead;
-                GameEvents.RaiseCellDestroyed();
+                GameEvents.RaiseCellDestroyed(IsCurable);
                 Destroy(gameObject);
             }
         }
 
         /// <summary>
-        /// Repair rounds heal the cell instead of killing it. Once fully repaired it stops
+        /// Medicine rounds cure an infected cell instead of killing it. Once cured it stops
         /// attacking, turns back into a healthy red cell, and leaves after a few seconds.
+        /// Malignant cells shrug medicine off.
         /// </summary>
         public void Repair(float amount)
         {
             if (amount <= 0f || !IsHostile)
             {
+                return;
+            }
+
+            if (!IsCurable)
+            {
+                lastResistedTime = Time.time;
                 return;
             }
 
@@ -172,12 +177,9 @@ namespace AIGame.AI
             }
 
             currentState = EnemyAgentState.Repaired;
-            Renderer renderer = GetComponentInChildren<Renderer>();
-            if (renderer != null)
+            if (visual != null)
             {
-                Material mat = renderer.material;
-                mat.color = repairedColor;
-                mat.SetColor("_EmissionColor", repairedColor * 0.3f);
+                visual.ShowHealed();
             }
 
             GameEvents.RaiseCellRepaired();
@@ -187,6 +189,12 @@ namespace AIGame.AI
         public void ConfigureArchetype(EnemyArchetype newArchetype)
         {
             archetype = newArchetype;
+        }
+
+        /// <summary>Call right after spawning (before Start) to choose infected or malignant.</summary>
+        public void ConfigureCondition(CellCondition newCondition)
+        {
+            condition = newCondition;
         }
 
         public float GetDetectabilityMultiplierForDebug()
@@ -292,7 +300,9 @@ namespace AIGame.AI
             }
 
             Vector3 direction = delta.normalized;
-            transform.position += direction * moveSpeed * Time.deltaTime;
+            Vector3 next = transform.position + direction * moveSpeed * Time.deltaTime;
+            KeepInsideArtery(ref next);
+            transform.position = next;
             FaceTowards(destination);
         }
 
@@ -326,6 +336,12 @@ namespace AIGame.AI
         {
             Vector3 randomOffset = Random.insideUnitSphere * patrolRadius;
             patrolTarget = patrolAnchor + randomOffset;
+            KeepInsideArtery(ref patrolTarget);
+        }
+
+        private void KeepInsideArtery(ref Vector3 point)
+        {
+            ArteryPath.ClampInside(ref point, maxWallFraction, wallClearance, ArteryPath.MinTravelZ, ArteryPath.MaxTravelZ, out _);
         }
 
         private void AcquireShipReferences()

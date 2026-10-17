@@ -18,29 +18,40 @@ namespace AIGame.Gameplay
         [SerializeField] private float lifetime = 4f;
 
         private static readonly Color RepairColor = new Color(0.3f, 1f, 0.55f);
+        private static readonly Color DamageColor = new Color(1f, 0.45f, 0.15f);
 
         public ProjectileEffect Effect => effect;
 
-        /// <summary>Set what this round does on hit. Repair rounds glow green.</summary>
-        public void Configure(ProjectileEffect newEffect, float amount)
+        /// <summary>
+        /// Set what this round does on hit, keeping the prefab's damage / repair amount.
+        /// Medicine rounds glow green, destroy rounds orange.
+        /// </summary>
+        public void Configure(ProjectileEffect newEffect)
         {
             effect = newEffect;
-            if (effect == ProjectileEffect.Repair)
+            Color color = effect == ProjectileEffect.Repair ? RepairColor : DamageColor;
+            Renderer renderer = GetComponentInChildren<Renderer>();
+            if (renderer != null)
+            {
+                Material mat = renderer.material;
+                mat.color = color;
+                mat.EnableKeyword("_EMISSION");
+                mat.SetColor("_EmissionColor", color * 0.9f);
+            }
+        }
+
+        /// <summary>As Configure(effect), but with a custom damage or repair amount.</summary>
+        public void Configure(ProjectileEffect newEffect, float amount)
+        {
+            if (newEffect == ProjectileEffect.Repair)
             {
                 repairAmount = amount;
-                Renderer renderer = GetComponentInChildren<Renderer>();
-                if (renderer != null)
-                {
-                    Material mat = renderer.material;
-                    mat.color = RepairColor;
-                    mat.EnableKeyword("_EMISSION");
-                    mat.SetColor("_EmissionColor", RepairColor * 0.8f);
-                }
             }
             else
             {
                 damage = amount;
             }
+            Configure(newEffect);
         }
 
         private void OnEnable()
