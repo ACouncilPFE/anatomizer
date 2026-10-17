@@ -80,13 +80,15 @@ namespace AIGame.Gameplay
         // Read input every rendered frame so no button presses are missed.
         private void Update()
         {
-            inputForward = Input.GetAxis("Vertical");
-            inputStrafe  = Input.GetAxis("Horizontal");
-            inputRise    = (Input.GetKey(KeyCode.E) ? 1f : 0f) - (Input.GetKey(KeyCode.Q) ? 1f : 0f);
-            inputBoost   = Input.GetKey(KeyCode.LeftShift) ? boostMultiplier : 1f;
-            inputMouseX  = Input.GetAxis("Mouse X");
-            inputMouseY  = Input.GetAxis("Mouse Y");
-            inputRoll    = (Input.GetKey(KeyCode.Z) ? 1f : 0f) - (Input.GetKey(KeyCode.C) ? 1f : 0f);
+            // ShipInput merges keyboard/mouse with VR controllers (see ShipInput.cs).
+            ShipInput.State input = ShipInput.Read();
+            inputForward = input.Forward;
+            inputStrafe  = input.Strafe;
+            inputRise    = input.Rise;
+            inputBoost   = input.Boost ? boostMultiplier : 1f;
+            inputMouseX  = input.Yaw;
+            inputMouseY  = input.Pitch;
+            inputRoll    = input.Roll;
         }
 
         private void FixedUpdate()

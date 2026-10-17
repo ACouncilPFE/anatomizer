@@ -18,7 +18,7 @@ namespace AIGame.Gameplay
                 return;
             }
 
-            if (Input.GetMouseButton(0) && Time.time >= nextFireTime)
+            if (ShipInput.Read().Fire && Time.time >= nextFireTime)
             {
                 Fire();
             }

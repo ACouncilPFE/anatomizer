@@ -1,7 +1,10 @@
 {
   "name": "AIGame.Runtime",
   "rootNamespace": "AIGame",
-  "references": [],
+  "references": [
+    "Unity.InputSystem",
+    "Unity.XR.CoreUtils"
+  ],
   "includePlatforms": [],
   "excludePlatforms": [],
   "allowUnsafeCode": false,
