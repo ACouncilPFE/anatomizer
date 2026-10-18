@@ -92,14 +92,7 @@ namespace AIGame.Gameplay
             }
 
             // Anything that isn't wall shows as deep-red haze rather than sky.
-            foreach (Camera cam in FindObjectsOfType<Camera>())
-            {
-                if (cam.targetTexture == null || cam.farClipPlane > 50f)
-                {
-                    cam.clearFlags = CameraClearFlags.SolidColor;
-                    cam.backgroundColor = RenderSettings.fogColor;
-                }
-            }
+            UseHazeBackground();
 
             foreach (Light light in FindObjectsOfType<Light>())
             {
@@ -123,7 +116,7 @@ namespace AIGame.Gameplay
             transform.localScale = Vector3.one;
 
             ArteryLayout.BuildMission1();
-            Material lining = CreateWallMaterial();
+            Material lining = CreateLiningMaterial(textureSize, textureTiling, wetness, Color.white, new Color(0.10f, 0.01f, 0.025f));
 
             for (int i = 0; i < PassageNetwork.All.Count; i++)
             {
@@ -149,14 +142,18 @@ namespace AIGame.Gameplay
             }
         }
 
-        private Material CreateWallMaterial()
+        /// <summary>
+        /// The wet lining used for vessel and chamber walls: the procedural texture and normal map,
+        /// tinted (white = artery pink-red). emission is a faint glow so far walls aren't pure black.
+        /// </summary>
+        public static Material CreateLiningMaterial(int textureSize, Vector2 textureTiling, float wetness, Color tint, Color emission)
         {
             ProceduralTextures.ArteryWall(textureSize, out Texture2D albedo, out Texture2D normal);
 
-            Material mat = new Material(Shader.Find("Standard")) { name = "ArteryWall_Procedural" };
+            Material mat = new Material(Shader.Find("Standard")) { name = "Lining_Procedural" };
             mat.mainTexture = albedo;
             mat.mainTextureScale = textureTiling;
-            mat.color = Color.white;
+            mat.color = tint;
             mat.SetTexture("_BumpMap", normal);
             mat.SetFloat("_BumpScale", 0.9f);
             mat.EnableKeyword("_NORMALMAP");
@@ -164,7 +161,7 @@ namespace AIGame.Gameplay
             mat.SetFloat("_Glossiness", wetness);
             // A faint inner glow keeps distant walls from going pure black inside the fog.
             mat.EnableKeyword("_EMISSION");
-            mat.SetColor("_EmissionColor", new Color(0.10f, 0.01f, 0.025f));
+            mat.SetColor("_EmissionColor", emission);
             return mat;
         }
 
@@ -186,15 +183,33 @@ namespace AIGame.Gameplay
         /// <summary>Deep-red haze and low ambient light, like looking down a vessel with a scope.</summary>
         public static void ApplyAtmosphere()
         {
-            RenderSettings.ambientMode = AmbientMode.Flat;
-            RenderSettings.ambientLight = new Color(0.22f, 0.05f, 0.07f);
-            RenderSettings.fog = true;
-            RenderSettings.fogColor = new Color(0.30f, 0.03f, 0.07f);
-            RenderSettings.fogMode = FogMode.ExponentialSquared;
-            RenderSettings.fogDensity = 0.016f;
+            ApplyAtmosphere(new Color(0.30f, 0.03f, 0.07f), new Color(0.22f, 0.05f, 0.07f), 0.016f);
         }
 
-        private static void AddEndoscopeLight()
+        public static void ApplyAtmosphere(Color fog, Color ambient, float density)
+        {
+            RenderSettings.ambientMode = AmbientMode.Flat;
+            RenderSettings.ambientLight = ambient;
+            RenderSettings.fog = true;
+            RenderSettings.fogColor = fog;
+            RenderSettings.fogMode = FogMode.ExponentialSquared;
+            RenderSettings.fogDensity = density;
+        }
+
+        /// <summary>Haze-coloured background for every scene camera, so gaps never show sky.</summary>
+        public static void UseHazeBackground()
+        {
+            foreach (Camera cam in FindObjectsOfType<Camera>())
+            {
+                if (cam.targetTexture == null || cam.farClipPlane > 50f)
+                {
+                    cam.clearFlags = CameraClearFlags.SolidColor;
+                    cam.backgroundColor = RenderSettings.fogColor;
+                }
+            }
+        }
+
+        public static void AddEndoscopeLight()
         {
             ShipController ship = FindObjectOfType<ShipController>();
             if (ship == null || ship.transform.Find("Endoscope Light") != null)

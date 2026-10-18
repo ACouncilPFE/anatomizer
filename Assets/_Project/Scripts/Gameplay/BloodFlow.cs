@@ -20,6 +20,11 @@ namespace AIGame.Gameplay
         [SerializeField] private float hullClearance = 1f;     // capsule radius + cell radius
         [SerializeField] private float hullHalfLength = 0.6f;  // capsule's straight section, either side of centre
 
+        /// <summary>Scales how fast all blood moves (the heart sets this with each beat's surge).</summary>
+        public static float SpeedMultiplier = 1f;
+
+        [SerializeField] private Color cellColor = new Color(0.74f, 0.06f, 0.10f);
+
         /// <summary>A cell started rubbing against the ship: where, and how hard (0..1).</summary>
         public static event System.Action<Vector3, float> CellBrushedShip;
 
@@ -49,11 +54,18 @@ namespace AIGame.Gameplay
             count = cellCount;
         }
 
+        /// <summary>Blood returning from the body (in veins and the right heart) is darker.</summary>
+        public void Configure(int cellCount, Color color)
+        {
+            count = cellCount;
+            cellColor = color;
+        }
+
         private void Start()
         {
             Mesh mesh = ProceduralMeshes.BiconcaveDisc(cellRadius);
             Material mat = new Material(Shader.Find("Standard")) { name = "RedBloodCell" };
-            mat.color = new Color(0.74f, 0.06f, 0.10f);
+            mat.color = cellColor;
             mat.SetFloat("_Glossiness", 0.55f);
             mat.EnableKeyword("_EMISSION");
             mat.SetColor("_EmissionColor", new Color(0.09f, 0f, 0.01f));
@@ -162,7 +174,7 @@ namespace AIGame.Gameplay
                 ref Cell c = ref cells[i];
 
                 // Blood moves fastest in the middle of the vessel and slowest near the wall.
-                c.s += c.speed * (1.15f - c.radial * 0.6f) * dt;
+                c.s += c.speed * (1.15f - c.radial * 0.6f) * SpeedMultiplier * dt;
                 if (c.s > c.passage.MaxTravel)
                 {
                     c.s = c.passage.MinTravel;

@@ -24,6 +24,7 @@ namespace AIGame.Core
         private int cellsTreated;
         private int healthyCellsLost;
         private float bloodLoss;
+        private float strain;
 
         public GameState CurrentState { get; private set; } = GameState.Briefing;
         public float RemainingTime => remainingTime;
@@ -35,6 +36,8 @@ namespace AIGame.Core
         public int MaxHealthyCellsLost => maxHealthyCellsLost;
         /// <summary>The patient's blood loss from open tears, 0..1. At 1 the mission fails.</summary>
         public float BloodLoss01 => bloodLoss;
+        /// <summary>How hard the patient's heart is labouring (leaky valve, irregular rhythm), 0..1. At 1 the mission fails.</summary>
+        public float Strain01 => strain;
 
         private void OnEnable()
         {
@@ -54,8 +57,8 @@ namespace AIGame.Core
         {
             if (Instance != null && Instance != this)
             {
-                Destroy(gameObject);
-                return;
+                // A newly loaded mission brings its own settings: hand over to it.
+                Destroy(Instance.gameObject);
             }
 
             Instance = this;
@@ -95,6 +98,7 @@ namespace AIGame.Core
             cellsTreated = 0;
             healthyCellsLost = 0;
             bloodLoss = 0f;
+            strain = 0f;
             GameEvents.RaiseObjectiveProgressChanged(completedObjectives, requiredObjectives);
             SetState(GameState.InMission);
             Time.timeScale = 1f;
@@ -172,6 +176,21 @@ namespace AIGame.Core
 
             bloodLoss = Mathf.Clamp01(bloodLoss + amount);
             if (bloodLoss >= 1f)
+            {
+                FailMission();
+            }
+        }
+
+        /// <summary>Heart problems call this while they persist.</summary>
+        public void AddStrain(float amount)
+        {
+            if (CurrentState != GameState.InMission || amount <= 0f)
+            {
+                return;
+            }
+
+            strain = Mathf.Clamp01(strain + amount);
+            if (strain >= 1f)
             {
                 FailMission();
             }

@@ -14,12 +14,19 @@ namespace AIGame.Gameplay
         /// </summary>
         public static Mesh Wall(Passage passage, float ringsPerMeter, int sides, bool doubleSided)
         {
+            return Wall(passage, ringsPerMeter, sides, doubleSided, out _);
+        }
+
+        /// <summary>As Wall, also returning the centreline point each vertex belongs to (to squeeze it).</summary>
+        public static Mesh Wall(Passage passage, float ringsPerMeter, int sides, bool doubleSided, out Vector3[] centers)
+        {
             int rings = Mathf.CeilToInt(passage.Length * ringsPerMeter) + 1;
             int columns = sides + 1; // duplicate seam column so UVs wrap cleanly
             Vector3[] vertices = new Vector3[rings * columns];
             Vector3[] normals = new Vector3[vertices.Length];
             Vector2[] uvs = new Vector2[vertices.Length];
             bool[] open = new bool[vertices.Length];
+            centers = new Vector3[vertices.Length];
             float tile = passage.Profile.MetresPerTile;
 
             for (int ring = 0; ring < rings; ring++)
@@ -30,6 +37,7 @@ namespace AIGame.Gameplay
                     float angle = col / (float)sides * Mathf.PI * 2f;
                     int i = ring * columns + col;
                     vertices[i] = WallPoint(passage, angle, s);
+                    centers[i] = passage.CenterAt(s);
                     normals[i] = WallNormal(passage, angle, s);
                     uvs[i] = new Vector2(col / (float)sides, s / tile);
                     open[i] = PassageNetwork.InsideAnother(passage, vertices[i], 0.97f);

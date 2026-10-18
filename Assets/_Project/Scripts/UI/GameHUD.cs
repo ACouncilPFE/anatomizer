@@ -99,12 +99,79 @@ namespace AIGame.UI
             GUI.Label(new Rect(20, 250, 900, 60), $"Patient blood loss: {blood * 100f:F0}%", _labelStyle);
 
             DrawNearestLesion();
+            DrawHeart(gameMan);
+
+            GUI.color = new Color(1f, 1f, 1f, 0.6f);
+            string missions = "";
+            foreach (var mission in MissionSelector.Missions)
+            {
+                missions += $"[{mission.key}] {mission.title}    ";
+            }
+            GUI.Label(new Rect(20, _virtualHeight - 88, 1800, 30), missions, _hintStyle);
 
             GUI.color = new Color(1f, 1f, 1f, 0.75f);
             GUI.Label(new Rect(20, _virtualHeight - 64, 1800, 30),
                 "Cells - green INFECTED: medicine (right-click).   Spiky purple MALIGNANT: destroy (left-click).", _hintStyle);
             GUI.Label(new Rect(20, _virtualHeight - 40, 1800, 30),
                 "[V] cockpit view.   Artery - PLAQUE: laser (left-click).  CLOT: medicine (right-click).  Beam (pick 1-4, hold F): 1 TEAR suture, 2 ANEURYSM stent, 3 BLOCKAGE balloon, 4 FOREIGN OBJECT grabber.", _hintStyle);
+        }
+
+        // Mission 2: heart-rhythm trace, valve states, heart strain and surge warnings.
+        private void DrawHeart(GameManager gameMan)
+        {
+            HeartBeat heart = HeartBeat.Instance;
+            if (heart == null)
+            {
+                return;
+            }
+
+            // ECG trace, top right: the last three seconds, scrolling.
+            const float width = 420f;
+            const float height = 90f;
+            float x0 = _virtualWidth - width - 20f;
+            float y0 = 120f;
+            GUI.color = new Color(0f, 0.05f, 0f, 0.75f);
+            GUI.DrawTexture(new Rect(x0 - 4f, y0 - 24f, width + 8f, height + 30f), Texture2D.whiteTexture);
+            GUI.color = heart.Arrhythmic ? new Color(1f, 0.5f, 0.3f) : new Color(0.4f, 1f, 0.5f);
+            float bpm = 60f / Mathf.Max(heart.Interval, 0.1f);
+            GUI.Label(new Rect(x0, y0 - 24f, width, 24f),
+                heart.Arrhythmic ? $"ECG  {bpm:F0} bpm  ARRHYTHMIA - ablate the scar tissue" : $"ECG  {bpm:F0} bpm  steady", _hintStyle);
+
+            const int points = 140;
+            float now = Time.time;
+            for (int i = 0; i < points; i++)
+            {
+                float t = now - 3f + 3f * i / (points - 1);
+                float v = heart.EcgAt(t);
+                float px = x0 + width * i / (points - 1);
+                float py = y0 + height * 0.7f - v * height * 0.55f;
+                GUI.DrawTexture(new Rect(px, py, 3f, 3f), Texture2D.whiteTexture);
+            }
+
+            // Valves.
+            HeartEnvironment env = FindObjectOfType<HeartEnvironment>();
+            if (env != null && env.Tricuspid != null && env.Pulmonary != null)
+            {
+                DrawValve(env.Tricuspid, x0, y0 + height + 12f);
+                DrawValve(env.Pulmonary, x0 + width * 0.5f, y0 + height + 12f);
+
+                if (env.PressureSurgeAtShip())
+                {
+                    GUI.color = new Color(1f, 0.3f, 0.2f, 0.6f + 0.4f * Mathf.Sin(now * 20f));
+                    GUI.Label(new Rect(x0, y0 + height + 40f, width, 30f), "PRESSURE SURGE - hold on", _labelStyle);
+                }
+            }
+
+            // Heart strain.
+            float strain = gameMan.Strain01;
+            GUI.color = strain > 0.6f ? Color.red : strain > 0.3f ? Color.yellow : new Color(1f, 0.75f, 0.85f);
+            GUI.Label(new Rect(20, 370, 900, 60), $"Heart strain: {strain * 100f:F0}%", _labelStyle);
+        }
+
+        private void DrawValve(HeartValve valve, float x, float y)
+        {
+            GUI.color = valve.IsOpen ? new Color(0.4f, 1f, 0.5f) : new Color(1f, 0.45f, 0.4f);
+            GUI.Label(new Rect(x, y, 220f, 26f), $"{valve.DisplayName}: {(valve.IsOpen ? "OPEN" : "SHUT")}", _hintStyle);
         }
 
         // Points you at the closest wall damage still to be fixed.
@@ -194,11 +261,13 @@ namespace AIGame.UI
             bool won = gameMan.CurrentState == GameState.Success;
             GUI.color = won ? new Color(0.5f, 1f, 0.5f) : new Color(1f, 0.4f, 0.4f);
             string text = won
-                ? "MISSION COMPLETE - the artery is clear"
+                ? (HeartBeat.Instance != null ? "MISSION COMPLETE - the heart is beating strong" : "MISSION COMPLETE - the artery is clear")
                 : gameMan.HealthyCellsLost >= gameMan.MaxHealthyCellsLost
                     ? "MISSION FAILED - too many curable cells destroyed"
                     : gameMan.BloodLoss01 >= 1f
                         ? "MISSION FAILED - the patient lost too much blood"
+                    : gameMan.Strain01 >= 1f
+                        ? "MISSION FAILED - the heart gave out"
                         : "MISSION FAILED";
             GUI.Label(new Rect(0, _virtualHeight * 0.4f, _virtualWidth, 80), text, _bannerStyle);
         }

@@ -17,6 +17,27 @@ namespace AIGame.Gameplay
         /// <summary>Metres of wall per texture repeat, round and along the passage.</summary>
         public float MetresPerTile = 33f;
 
+        /// <summary>
+        /// Heart chambers: the inner wall is covered in criss-crossing muscle ridges (trabeculae)
+        /// rather than smooth folds.
+        /// </summary>
+        public static readonly PassageProfile HeartChamber = new PassageProfile
+        {
+            Name = "Heart chamber",
+            MetresPerTile = 24f,
+            Relief = (angle, s) => 1f
+                - 0.06f * Mathf.Abs(Mathf.Sin(angle * 9f + s * 0.45f))
+                - 0.04f * Mathf.Abs(Mathf.Sin(angle * 5f - s * 0.7f + 0.8f))
+                + 0.02f * Mathf.Sin(s * 1.3f + angle * 2f),
+        };
+
+        /// <summary>Veins: thinner, smoother walls than arteries, with only faint folds.</summary>
+        public static readonly PassageProfile Vein = new PassageProfile
+        {
+            Name = "Vein",
+            Relief = (angle, s) => 1f + 0.015f * Mathf.Sin(angle * 6f + s * 0.1f) + 0.01f * Mathf.Sin(s * 0.7f),
+        };
+
         /// <summary>Arteries: soft folds running along the vessel that twist slowly, and faint rings.</summary>
         public static readonly PassageProfile Artery = new PassageProfile
         {

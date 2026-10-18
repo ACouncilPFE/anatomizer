@@ -64,7 +64,7 @@ namespace AIGame.Gameplay
             flow.volume = Smooth(flow.volume, (0.25f + 0.75f * speed01) * flowVolume * Master, dt, 4f);
             flow.pitch = Mathf.Lerp(0.75f, 1.35f, speed01);
 
-            heart.volume = heartbeatVolume * Master * (playing ? 1f : 0.4f);
+            heart.volume = HeartBeat.Instance != null ? 0f : heartbeatVolume * Master * (playing ? 1f : 0.4f);
 
             // Wall scrape while the pilot is holding us off the wall, or while a bad cell is in contact.
             bool onWall = pilot != null && pilot.IsHoldingWall && speed01 > 0.05f;

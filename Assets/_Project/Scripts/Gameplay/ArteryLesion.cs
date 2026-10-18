@@ -18,7 +18,11 @@ namespace AIGame.Gameplay
         /// <summary>A ring of plaque narrowing the whole vessel; opened with a balloon (angioplasty).</summary>
         Blockage,
         /// <summary>A metal splinter lodged in the wall; pulled out with the grabber.</summary>
-        ForeignObject
+        ForeignObject,
+        /// <summary>Heart: a torn valve leaflet that lets blood leak backwards; sutured shut.</summary>
+        LeakyValve,
+        /// <summary>Heart: a scar in the muscle wall that makes the rhythm irregular; lasered away (ablation).</summary>
+        ScarTissue
     }
 
     /// <summary>Everything the ship can treat with: two guns and the four surgical-beam tools.</summary>
@@ -41,6 +45,8 @@ namespace AIGame.Gameplay
     ///   Aneurysm       stent beam    - grows, and bursts into a tear if left too long
     ///   Blockage       balloon beam  - narrows the vessel; fly into it and inflate
     ///   ForeignObject  grabber beam
+    ///   LeakyValve     suture beam   - heart: strains the heart until closed
+    ///   ScarTissue     laser         - heart: makes the heartbeat irregular until ablated
     ///
     /// ArteryLesionField places them. Wall lesions sit on the wall facing the vessel's centre;
     /// a blockage sits on the centreline, since it rings the whole vessel.
@@ -57,6 +63,7 @@ namespace AIGame.Gameplay
         [SerializeField] private float aneurysmBurstSeconds = 150f;
         [SerializeField] private float burstBloodLoss = 0.1f;
         [SerializeField] private float labelDistance = 60f;
+        [SerializeField] private float leakStrainPerSecond = 0.002f; // heart strain from a torn valve
 
         private const float BlockageHalfLength = 3f;
         private const float BlockageDepth = 0.6f;
@@ -99,6 +106,8 @@ namespace AIGame.Gameplay
             LesionType.Clot => SurgicalTool.Medicine,
             LesionType.Aneurysm => SurgicalTool.Stent,
             LesionType.Blockage => SurgicalTool.Balloon,
+            LesionType.LeakyValve => SurgicalTool.Suture,
+            LesionType.ScarTissue => SurgicalTool.Laser,
             _ => SurgicalTool.Grabber
         };
 
@@ -109,6 +118,8 @@ namespace AIGame.Gameplay
             LesionType.Clot => "BLOOD CLOT",
             LesionType.Aneurysm => "ANEURYSM",
             LesionType.Blockage => "BLOCKAGE",
+            LesionType.LeakyValve => "TORN VALVE LEAFLET",
+            LesionType.ScarTissue => "SCAR TISSUE (irregular heartbeat)",
             _ => "FOREIGN OBJECT"
         };
 
@@ -215,6 +226,11 @@ namespace AIGame.Gameplay
                 glow.enabled = false;
             }
 
+            if (type == LesionType.ScarTissue)
+            {
+                HeartBeat.Instance?.RemoveArrhythmiaSource();
+            }
+
             GameEvents.RaiseLesionTreated();
             GameAudio.PlayAt(ProceduralAudio.LesionFixed, transform.position, 0.85f);
         }
@@ -251,6 +267,23 @@ namespace AIGame.Gameplay
                         }
                         break;
 
+                    case LesionType.LeakyValve:
+                        // Blood leaking back through the valve makes the heart work harder.
+                        GameManager.Instance?.AddStrain(leakStrainPerSecond * (1f - Progress01) * dt);
+                        if (glow != null)
+                        {
+                            glow.intensity = 0.8f + 0.4f * Mathf.Sin(Time.time * 6f);
+                        }
+                        break;
+
+                    case LesionType.ScarTissue:
+                        // Stray electrical sparks crackle across the scar.
+                        if (glow != null)
+                        {
+                            glow.intensity = Random.value < 0.08f ? Random.Range(1.5f, 3f) : Mathf.MoveTowards(glow.intensity, 0f, dt * 12f);
+                        }
+                        break;
+
                     case LesionType.ForeignObject:
                         // Being worked loose: slides out of the wall and rattles while the grabber pulls.
                         if (progress > 0f)
@@ -268,6 +301,7 @@ namespace AIGame.Gameplay
                 {
                     case LesionType.Plaque:
                     case LesionType.Clot:
+                    case LesionType.ScarTissue:
                     case LesionType.ForeignObject:
                         if (body != null && body.gameObject.activeSelf)
                         {
@@ -329,6 +363,29 @@ namespace AIGame.Gameplay
                     break;
                 case LesionType.Blockage:
                     BuildBlockage();
+                    break;
+                case LesionType.LeakyValve:
+                    BuildTear();
+                    // A torn leaflet doesn't bleed out of the body: the blood leaks backwards, so no spray.
+                    if (bleed != null)
+                    {
+                        Destroy(bleed.gameObject);
+                        bleed = null;
+                    }
+                    glow.color = new Color(1f, 0.5f, 0.6f);
+                    break;
+                case LesionType.ScarTissue:
+                    Hitbox(1.3f);
+                    body = Mass("Scar", LesionMeshes.Plaque, LesionMeshes.ScarTissueMaterial, new Vector3(2.8f, 2.2f, 0.7f));
+                    glow = new GameObject("Sparks").AddComponent<Light>();
+                    glow.transform.SetParent(transform, false);
+                    glow.transform.localPosition = new Vector3(0f, 0f, 0.8f);
+                    glow.type = LightType.Point;
+                    glow.color = new Color(0.7f, 0.9f, 1f);
+                    glow.range = 4f;
+                    glow.intensity = 0f;
+                    glow.shadows = LightShadows.None;
+                    HeartBeat.Instance?.AddArrhythmiaSource();
                     break;
                 default:
                     BuildForeignObject();
@@ -497,6 +554,7 @@ namespace AIGame.Gameplay
             switch (type)
             {
                 case LesionType.Tear:
+                case LesionType.LeakyValve:
                     // The gash narrows as it is pulled shut and stitches appear along it.
                     body.localScale = new Vector3(bodyScale.x * (1f - t), bodyScale.y, bodyScale.z);
                     rim.localScale = new Vector3(Mathf.Lerp(1f, 0.25f, t), 1f, 1f);
@@ -533,7 +591,8 @@ namespace AIGame.Gameplay
 
                 case LesionType.Plaque:
                 case LesionType.Clot:
-                    // Plaque breaks down / the clot dissolves.
+                case LesionType.ScarTissue:
+                    // Plaque breaks down / the clot dissolves / the scar is ablated.
                     body.localScale = bodyScale * Mathf.Lerp(1f, 0.3f, t);
                     break;
             }
@@ -603,6 +662,8 @@ namespace AIGame.Gameplay
                     LesionType.Clot => "CLOT DISSOLVED",
                     LesionType.Aneurysm => "ANEURYSM STENTED",
                     LesionType.Blockage => "ARTERY REOPENED",
+                    LesionType.LeakyValve => "VALVE REPAIRED",
+                    LesionType.ScarTissue => "SCAR ABLATED - rhythm steady",
                     _ => "OBJECT REMOVED"
                 };
                 color = new Color(0.5f, 1f, 0.6f);
@@ -626,6 +687,8 @@ namespace AIGame.Gameplay
                     LesionType.Clot => new Color(1f, 0.55f, 0.6f),
                     LesionType.Aneurysm => new Color(1f, 0.5f, 0.85f),
                     LesionType.Blockage => new Color(1f, 0.8f, 0.4f),
+                    LesionType.LeakyValve => new Color(1f, 0.6f, 0.75f),
+                    LesionType.ScarTissue => new Color(0.75f, 0.9f, 1f),
                     _ => new Color(0.8f, 0.85f, 0.95f)
                 };
             }

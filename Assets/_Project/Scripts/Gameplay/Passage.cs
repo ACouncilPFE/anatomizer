@@ -36,6 +36,8 @@ namespace AIGame.Gameplay
         public float PulseAmount = 0.06f;
         public float PulseFrequency = 0.11f;
         public float PulsePhase;
+        /// <summary>Live size multiplier for the whole passage (a heart chamber squeezing), or null.</summary>
+        public System.Func<float> Squeeze;
         /// <summary>What the passage looks like.</summary>
         public PassageProfile Profile = PassageProfile.Artery;
 
@@ -139,7 +141,8 @@ namespace AIGame.Gameplay
         /// <summary>Wall radii (along right, along up) at s, including the pulse and end caps.</summary>
         public Vector2 RadiiAt(float s)
         {
-            float scale = WidthAt(s) * (1f + Mathf.Sin(s * PulseFrequency + PulsePhase) * PulseAmount) * CapTaper(s);
+            float scale = WidthAt(s) * (1f + Mathf.Sin(s * PulseFrequency + PulsePhase) * PulseAmount) * CapTaper(s)
+                * (Squeeze != null ? Squeeze() : 1f);
             return BaseRadii * scale;
         }
 
