@@ -4,7 +4,7 @@ using UnityEngine.SceneManagement;
 namespace AIGame.Gameplay
 {
     /// <summary>
-    /// Puts the crew (ShipPilot and ShipCoPilot) the surgical beam and the ship's sounds aboard every ship when a scene
+    /// Puts the crew (ShipPilot and ShipCoPilot) the surgical beam, the ship's sounds and the cockpit window aboard every ship when a scene
     /// loads, so scenes built before they existed get them without being rebuilt or edited.
     /// </summary>
     public static class ShipCrew
@@ -35,6 +35,10 @@ namespace AIGame.Gameplay
                 if (ship.GetComponent<ShipAudio>() == null)
                 {
                     ship.gameObject.AddComponent<ShipAudio>();
+                }
+                if (ship.GetComponent<CockpitView>() == null)
+                {
+                    ship.gameObject.AddComponent<CockpitView>();
                 }
             }
         }

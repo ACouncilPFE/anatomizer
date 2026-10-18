@@ -96,7 +96,7 @@ namespace AIGame.UI
             GUI.Label(new Rect(20, _virtualHeight - 64, 1800, 30),
                 "Cells - green INFECTED: medicine (right-click).   Spiky purple MALIGNANT: destroy (left-click).", _hintStyle);
             GUI.Label(new Rect(20, _virtualHeight - 40, 1800, 30),
-                "Artery - PLAQUE: laser (left-click).  CLOT: medicine (right-click).  Beam (pick 1-4, hold F): 1 TEAR suture, 2 ANEURYSM stent, 3 BLOCKAGE balloon, 4 FOREIGN OBJECT grabber.", _hintStyle);
+                "[V] cockpit view.   Artery - PLAQUE: laser (left-click).  CLOT: medicine (right-click).  Beam (pick 1-4, hold F): 1 TEAR suture, 2 ANEURYSM stent, 3 BLOCKAGE balloon, 4 FOREIGN OBJECT grabber.", _hintStyle);
         }
 
         // Points you at the closest wall damage still to be fixed.

@@ -186,6 +186,7 @@ namespace AIGame.Editor
             ship.AddComponent<ShipCoPilot>();
             ship.AddComponent<SurgicalBeam>();
             ship.AddComponent<ShipAudio>();
+            ship.AddComponent<CockpitView>();
 
             ship.transform.position = new Vector3(0f, 0f, 0f);
             ship.transform.rotation = Quaternion.identity;

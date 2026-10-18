@@ -10,7 +10,7 @@ namespace AIGame.Gameplay
     ///   W/S forward, A/D strafe, E/Q rise/descend, Shift boost, Z/C roll, mouse steer.
     ///   Left click destroy round (laser), right click medicine round.
     ///   Surgical beam: 1-4 pick suture / stent / balloon / grabber, hold F to use it.
-    ///   P autopilot on/off (ShipPilot), R co-pilot on/off (ShipCoPilot).
+    ///   P autopilot on/off (ShipPilot), R co-pilot on/off (ShipCoPilot), V cockpit window (CockpitView).
     /// VR controllers (Quest-style, read through UnityEngine.XR so it works with any OpenXR headset):
     ///   Left stick   throttle (Y) and strafe (X)
     ///   Right stick  steer: yaw (X) and pitch (Y)
@@ -38,6 +38,7 @@ namespace AIGame.Gameplay
             public bool  Beam;           // surgical beam (held)
             public bool  CycleBeamTool;  // held state; SurgicalBeam acts on the press
             public int   BeamToolSelect; // 1-4 when a number key is pressed this frame, else 0
+            public bool  ToggleCockpitView; // held state; CockpitView acts on the press
             public bool  TogglePilot;    // held state; ShipPilot acts on the press
             public bool  ToggleCoPilot;  // held state; ShipCoPilot acts on the press
         }
@@ -72,6 +73,7 @@ namespace AIGame.Gameplay
                 Fire    = Input.GetMouseButton(0),
                 FireMedicine  = Input.GetMouseButton(1),
                 Beam          = Input.GetKey(KeyCode.F),
+                ToggleCockpitView = Input.GetKey(KeyCode.V),
                 BeamToolSelect = Input.GetKeyDown(KeyCode.Alpha1) ? 1 : Input.GetKeyDown(KeyCode.Alpha2) ? 2
                                : Input.GetKeyDown(KeyCode.Alpha3) ? 3 : Input.GetKeyDown(KeyCode.Alpha4) ? 4 : 0,
                 TogglePilot   = Input.GetKey(KeyCode.P),
