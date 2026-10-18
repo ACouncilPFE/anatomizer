@@ -142,7 +142,7 @@ namespace AIGame.UI
                     : beam.Target.RequiredTool == beam.CurrentTool ? "working on " + beam.Target.Title.ToLower() + "..."
                     : "wrong tool for " + beam.Target.Title.ToLower() + " - " + beam.Target.ToolHint;
                 GUI.color = SurgicalBeam.ToolColor(beam.CurrentTool);
-                GUI.Label(new Rect(20, 330, 1100, 60), $"Surgical beam [1-4]: {tool} - {state}", _labelStyle);
+                GUI.Label(new Rect(20, 330, 1100, 60), $"Beam tool: {tool} (press 1-4 to change) - {state}", _labelStyle);
             }
         }
 

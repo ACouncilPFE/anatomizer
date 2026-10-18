@@ -117,10 +117,10 @@ namespace AIGame.Gameplay
         {
             SurgicalTool.Laser => "laser it (left-click)",
             SurgicalTool.Medicine => "clot-buster medicine (right-click)",
-            SurgicalTool.Suture => "suture: beam tool 1, hold F",
-            SurgicalTool.Stent => "stent: beam tool 2, hold F",
-            SurgicalTool.Balloon => "balloon: beam tool 3, hold F inside it",
-            _ => "grabber: beam tool 4, hold F"
+            SurgicalTool.Suture => "press 1 for Suture, then hold F",
+            SurgicalTool.Stent => "press 2 for Stent, then hold F",
+            SurgicalTool.Balloon => "press 3 for Balloon, fly inside it, then hold F",
+            _ => "press 4 for Grabber, then hold F"
         };
 
         /// <summary>Where tools should aim.</summary>
