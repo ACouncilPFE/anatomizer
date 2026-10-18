@@ -74,8 +74,9 @@ namespace AIGame.Gameplay
                 FireMedicine  = Input.GetMouseButton(1),
                 Beam          = Input.GetKey(KeyCode.F),
                 ToggleCockpitView = Input.GetKey(KeyCode.V),
-                BeamToolSelect = Input.GetKeyDown(KeyCode.Alpha1) ? 1 : Input.GetKeyDown(KeyCode.Alpha2) ? 2
-                               : Input.GetKeyDown(KeyCode.Alpha3) ? 3 : Input.GetKeyDown(KeyCode.Alpha4) ? 4 : 0,
+                // Number row or keypad.
+                BeamToolSelect = Pressed(KeyCode.Alpha1, KeyCode.Keypad1) ? 1 : Pressed(KeyCode.Alpha2, KeyCode.Keypad2) ? 2
+                               : Pressed(KeyCode.Alpha3, KeyCode.Keypad3) ? 3 : Pressed(KeyCode.Alpha4, KeyCode.Keypad4) ? 4 : 0,
                 TogglePilot   = Input.GetKey(KeyCode.P),
                 ToggleCoPilot = Input.GetKey(KeyCode.R),
             };
@@ -107,6 +108,8 @@ namespace AIGame.Gameplay
             s.TogglePilot   |= ReadBool(left,  CommonUsages.primaryButton);
             s.ToggleCoPilot |= ReadBool(right, CommonUsages.primaryButton);
         }
+
+        private static bool Pressed(KeyCode a, KeyCode b) => Input.GetKeyDown(a) || Input.GetKeyDown(b);
 
         private static bool ReadBool(InputDevice device, InputFeatureUsage<bool> usage)
         {

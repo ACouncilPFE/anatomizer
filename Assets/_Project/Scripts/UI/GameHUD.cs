@@ -72,6 +72,14 @@ namespace AIGame.UI
             GUI.DrawTexture(new Rect(x + 3f, y - 1f, 9f, 2f), Texture2D.whiteTexture);
             GUI.DrawTexture(new Rect(x - 1f, y - 12f, 2f, 9f), Texture2D.whiteTexture);
             GUI.DrawTexture(new Rect(x - 1f, y + 3f, 2f, 9f), Texture2D.whiteTexture);
+
+            // The selected beam tool, right by the crosshair, so F never surprises you.
+            SurgicalBeam beam = ship.GetComponent<SurgicalBeam>();
+            if (beam != null)
+            {
+                GUI.color = SurgicalBeam.ToolColor(beam.CurrentTool);
+                GUI.Label(new Rect(x + 14f, y + 6f, 220f, 20f), $"F: {beam.CurrentToolNumber} {SurgicalBeam.ToolName(beam.CurrentTool)}");
+            }
             GUI.color = Color.white;
         }
 
@@ -140,7 +148,7 @@ namespace AIGame.UI
                 string state = !beam.IsActive ? "hold F to use"
                     : beam.Target == null ? "point the nose at a problem (within 22 m)"
                     : beam.Target.RequiredTool == beam.CurrentTool ? "working on " + beam.Target.Title.ToLower() + "..."
-                    : "wrong tool for " + beam.Target.Title.ToLower() + " - " + beam.Target.ToolHint;
+                    : $"WRONG TOOL for {beam.Target.Title.ToLower()} - {beam.Target.ToolHint}";
                 GUI.color = SurgicalBeam.ToolColor(beam.CurrentTool);
                 GUI.Label(new Rect(20, 330, 1100, 60), $"Beam tool: {tool} (press 1-4 to change) - {state}", _labelStyle);
             }
