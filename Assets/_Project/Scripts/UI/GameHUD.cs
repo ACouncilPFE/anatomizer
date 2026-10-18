@@ -105,7 +105,7 @@ namespace AIGame.UI
             string missions = "";
             foreach (var mission in MissionSelector.Missions)
             {
-                missions += $"[{mission.key}] {mission.title}    ";
+                missions += $"[{mission.key} or Ctrl+{mission.number.ToString().Replace("Alpha", "")}] {mission.title}    ";
             }
             GUI.Label(new Rect(20, _virtualHeight - 88, 1800, 30), missions, _hintStyle);
 

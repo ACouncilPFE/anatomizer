@@ -640,7 +640,7 @@ namespace AIGame.Gameplay
                 return;
             }
 
-            Vector3 anchor = type == LesionType.Blockage
+            Vector3 anchor = type == LesionType.Blockage && passage != null
                 ? transform.position + transform.up * passage.RadiiAt(s).y * 0.5f
                 : transform.position + transform.forward * 1.5f;
             Vector3 screen = cam.WorldToScreenPoint(anchor);
