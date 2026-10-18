@@ -344,7 +344,7 @@ namespace AIGame.AI
 
         private void KeepInsideArtery(ref Vector3 point)
         {
-            ArteryPath.ClampInside(ref point, maxWallFraction, wallClearance, ArteryPath.MinTravelZ, ArteryPath.MaxTravelZ, out _);
+            PassageNetwork.ClampInside(ref point, maxWallFraction, wallClearance, out _);
         }
 
         private void AcquireShipReferences()

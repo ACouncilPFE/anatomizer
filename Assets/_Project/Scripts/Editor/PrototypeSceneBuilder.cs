@@ -402,7 +402,7 @@ namespace AIGame.Editor
         private static void CreateArteryEnvironment(Vector3 shipOrigin)
         {
             // The sealed vessel, its lining, the blood flow and the ship's endoscope light all come
-            // from ArteryEnvironment (built from ArteryPath, which starts at the ship's origin).
+            // from ArteryEnvironment (built from ArteryLayout's passages, which start at the ship's origin).
             GameObject arteryRoot = new GameObject("ArteryTunnel");
 
             GameObject tubeObj = new GameObject(ArteryEnvironment.TunnelObjectName);

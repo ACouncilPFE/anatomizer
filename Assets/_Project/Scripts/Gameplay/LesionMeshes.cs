@@ -79,29 +79,29 @@ namespace AIGame.Gameplay
         }
 
         /// <summary>
-        /// A ring of plaque lining the artery around depth z0, narrowing the vessel by `depth`
+        /// A ring of plaque lining the passage around s0, narrowing it by `depth`
         /// (0 = no narrowing, 0.6 = only 40% of the width left) at its middle and blending into
         /// the wall at both ends. Vertices are relative to `origin`; faces point inward.
         /// Pass an existing mesh to update it in place as the blockage is opened.
         /// </summary>
-        public static Mesh StenosisBand(Mesh mesh, Vector3 origin, float z0, float halfLength, float depth, int sides = 40, int rings = 18)
+        public static Mesh StenosisBand(Mesh mesh, Vector3 origin, Passage passage, float s0, float halfLength, float depth, int sides = 40, int rings = 18)
         {
             int columns = sides + 1;
             Vector3[] vertices = new Vector3[rings * columns];
             for (int ring = 0; ring < rings; ring++)
             {
                 float t = ring / (float)(rings - 1) * 2f - 1f; // -1..1 along the band
-                float z = z0 + t * halfLength;
+                float s = s0 + t * halfLength;
                 float bell = Mathf.Cos(t * Mathf.PI * 0.5f);
                 bell *= bell;
-                Vector3 center = ArteryPath.CenterAt(z);
-                Vector2 radii = ArteryPath.RadiiAt(z) * 0.98f;
+                passage.Frame(s, out Vector3 center, out _, out Vector3 right, out Vector3 up);
+                Vector2 radii = passage.RadiiAt(s) * 0.98f;
                 for (int col = 0; col < columns; col++)
                 {
                     float a = col / (float)sides * Mathf.PI * 2f;
-                    float lumps = 1f + 0.18f * Mathf.Sin(a * 5f + z) + 0.1f * Mathf.Sin(a * 9f - 2f * z);
+                    float lumps = 1f + 0.18f * Mathf.Sin(a * 5f + s) + 0.1f * Mathf.Sin(a * 9f - 2f * s);
                     float scale = 1f - depth * bell * lumps;
-                    vertices[ring * columns + col] = center + new Vector3(Mathf.Cos(a) * radii.x * scale, Mathf.Sin(a) * radii.y * scale, 0f) - origin;
+                    vertices[ring * columns + col] = center + right * (Mathf.Cos(a) * radii.x * scale) + up * (Mathf.Sin(a) * radii.y * scale) - origin;
                 }
             }
 
@@ -149,28 +149,28 @@ namespace AIGame.Gameplay
         }
 
         /// <summary>
-        /// A stent: thin zig-zag metal hoops hugging the vessel wall around depth z0. Built
+        /// A stent: thin zig-zag metal hoops hugging the passage wall around s0. Built
         /// relative to `origin`. Returns one mesh per hoop so they can appear one by one.
         /// </summary>
-        public static Mesh[] StentHoops(Vector3 origin, float z0, float halfLength, int hoops, int sides = 40)
+        public static Mesh[] StentHoops(Vector3 origin, Passage passage, float s0, float halfLength, int hoops, int sides = 40)
         {
             Mesh[] result = new Mesh[hoops];
             const float width = 0.14f;
             int columns = sides + 1;
             for (int h = 0; h < hoops; h++)
             {
-                float z = z0 + Mathf.Lerp(-halfLength, halfLength, h / (float)Mathf.Max(hoops - 1, 1));
-                Vector3 center = ArteryPath.CenterAt(z);
-                Vector2 radii = ArteryPath.RadiiAt(z) * 0.9f;
+                float s = s0 + Mathf.Lerp(-halfLength, halfLength, h / (float)Mathf.Max(hoops - 1, 1));
+                passage.Frame(s, out Vector3 center, out Vector3 tangent, out Vector3 right, out Vector3 up);
+                Vector2 radii = passage.RadiiAt(s) * 0.9f;
                 Vector3[] vertices = new Vector3[columns * 2];
                 for (int col = 0; col < columns; col++)
                 {
                     float a = col / (float)sides * Mathf.PI * 2f;
                     // Zig-zag along the hoop, like the cut pattern of a real stent.
                     float zig = (col % 2 == 0 ? 1f : -1f) * 0.18f;
-                    Vector3 p = center + new Vector3(Mathf.Cos(a) * radii.x, Mathf.Sin(a) * radii.y, zig) - origin;
-                    vertices[col * 2] = p + new Vector3(0f, 0f, -width * 0.5f);
-                    vertices[col * 2 + 1] = p + new Vector3(0f, 0f, width * 0.5f);
+                    Vector3 p = center + right * (Mathf.Cos(a) * radii.x) + up * (Mathf.Sin(a) * radii.y) + tangent * zig - origin;
+                    vertices[col * 2] = p - tangent * (width * 0.5f);
+                    vertices[col * 2 + 1] = p + tangent * (width * 0.5f);
                 }
 
                 int[] triangles = new int[sides * 12];

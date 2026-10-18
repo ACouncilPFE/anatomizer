@@ -66,7 +66,8 @@ namespace AIGame.Gameplay
         private float treatedTime;
         private float lastWrongToolTime = -999f;
         private float age;
-        private float z;
+        private Passage passage;
+        private float s;
 
         private Transform body;       // main mass, or the tear's dark gash
         private Transform rim;        // tear: raw red edges
@@ -126,25 +127,29 @@ namespace AIGame.Gameplay
         /// <summary>Where tools should aim.</summary>
         public Vector3 AimPoint => type == LesionType.Blockage ? transform.position : transform.position + transform.forward * 0.6f;
 
-        /// <summary>Place the lesion at depth z and angle (radians) around the vessel.</summary>
-        public void Configure(LesionType newType, float depthZ, float angle)
+        /// <summary>The passage this lesion is in, and how far along it.</summary>
+        public Passage Passage => passage;
+        public float S => s;
+
+        /// <summary>Place the lesion on a passage at s, at angle (radians) around it.</summary>
+        public void Configure(LesionType newType, Passage onPassage, float atS, float angle)
         {
             type = newType;
-            z = depthZ;
-            Vector3 center = ArteryPath.CenterAt(z);
+            passage = onPassage;
+            s = atS;
+            passage.Frame(s, out Vector3 center, out Vector3 tangent, out _, out Vector3 up);
 
             if (type == LesionType.Blockage)
             {
                 transform.position = center;
-                transform.rotation = Quaternion.LookRotation(ArteryPath.TangentAt(z));
+                transform.rotation = Quaternion.LookRotation(tangent, up);
             }
             else
             {
-                Vector2 radii = ArteryPath.RadiiAt(z);
-                Vector3 onWall = center + new Vector3(Mathf.Cos(angle) * radii.x, Mathf.Sin(angle) * radii.y, 0f) * 0.93f;
+                Vector3 onWall = passage.PointAt(s, angle, 0.93f);
                 transform.position = onWall;
-                // Face the middle of the vessel, with "up" running along the artery.
-                transform.rotation = Quaternion.LookRotation((center - onWall).normalized, ArteryPath.TangentAt(z));
+                // Face the middle of the vessel, with "up" running along it.
+                transform.rotation = Quaternion.LookRotation((center - onWall).normalized, tangent);
             }
 
             BuildVisual();
@@ -397,7 +402,7 @@ namespace AIGame.Gameplay
             steps.SetParent(transform, false);
             steps.position = Vector3.zero;
             steps.rotation = Quaternion.identity;
-            foreach (Mesh hoop in LesionMeshes.StentHoops(Vector3.zero, z, 2.2f, 6))
+            foreach (Mesh hoop in LesionMeshes.StentHoops(Vector3.zero, passage, s, 2.2f, 6))
             {
                 GameObject h = new GameObject("StentHoop");
                 h.transform.SetParent(steps, false);
@@ -411,7 +416,7 @@ namespace AIGame.Gameplay
 
         private void BuildBlockage()
         {
-            blockageMesh = LesionMeshes.StenosisBand(null, transform.position, z, BlockageHalfLength, BlockageDepth);
+            blockageMesh = LesionMeshes.StenosisBand(null, transform.position, passage, s, BlockageHalfLength, BlockageDepth);
             GameObject band = new GameObject("Blockage");
             band.transform.SetParent(transform, false);
             band.transform.rotation = Quaternion.identity; // mesh is in world axes around our position
@@ -514,14 +519,14 @@ namespace AIGame.Gameplay
                 case LesionType.Blockage:
                     // The balloon inflates and presses the plaque back into the wall.
                     float depth = BlockageDepth * (1f - t);
-                    LesionMeshes.StenosisBand(blockageMesh, transform.position, z, BlockageHalfLength, depth);
+                    LesionMeshes.StenosisBand(blockageMesh, transform.position, passage, s, BlockageHalfLength, depth);
                     if (lastColliderDepth - depth > 0.08f)
                     {
                         blockageCollider.sharedMesh = null;
                         blockageCollider.sharedMesh = blockageMesh;
                         lastColliderDepth = depth;
                     }
-                    Vector2 radii = ArteryPath.RadiiAt(z);
+                    Vector2 radii = passage.RadiiAt(s);
                     float open = Mathf.Lerp(1f - BlockageDepth, 0.95f, t);
                     balloon.localScale = new Vector3(radii.x * 2f * open, radii.y * 2f * open, BlockageHalfLength * 1.6f) * Mathf.Clamp01(t * 4f);
                     break;
@@ -577,7 +582,7 @@ namespace AIGame.Gameplay
             }
 
             Vector3 anchor = type == LesionType.Blockage
-                ? transform.position + Vector3.up * ArteryPath.RadiiAt(z).y * 0.5f
+                ? transform.position + transform.up * passage.RadiiAt(s).y * 0.5f
                 : transform.position + transform.forward * 1.5f;
             Vector3 screen = cam.WorldToScreenPoint(anchor);
             if (screen.z <= 0f || screen.z > labelDistance)

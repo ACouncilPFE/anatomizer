@@ -135,7 +135,7 @@ namespace AIGame.UI
                 return;
             }
 
-            float along = nearest.transform.position.z - ship.transform.position.z;
+            float along = Vector3.Dot(nearest.transform.position - ship.transform.position, ship.transform.forward);
             string where = Mathf.Abs(along) < 3f ? "right here" : along > 0f ? $"{along:F0} m ahead" : $"{-along:F0} m behind";
             GUI.color = nearest.Type == LesionType.Tear ? new Color(1f, 0.45f, 0.4f) : new Color(1f, 0.85f, 0.55f);
             GUI.Label(new Rect(20, 290, 900, 60),

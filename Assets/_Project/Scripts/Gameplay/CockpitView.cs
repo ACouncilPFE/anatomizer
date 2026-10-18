@@ -93,6 +93,8 @@ namespace AIGame.Gameplay
             cam.fieldOfView = fov;
             cam.nearClipPlane = 0.05f;
             cam.farClipPlane = 360f;
+            cam.clearFlags = CameraClearFlags.SolidColor;
+            cam.backgroundColor = RenderSettings.fogColor;
             return cam;
         }
 

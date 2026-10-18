@@ -34,7 +34,7 @@ namespace AIGame.Gameplay
         [Header("Boundaries")]
         [SerializeField, Range(0.3f, 1f)] private float maxWallFraction = 0.85f; // how close to the wall the pilot allows
         [SerializeField] private float hullClearance = 0.5f;                      // metres kept between hull and wall
-        // Travel along the vessel is limited to ArteryPath.MinTravelZ..MaxTravelZ, short of the sealed ends.
+        // Travel along each passage is limited to its MinTravel..MaxTravel, short of any sealed end.
 
         [Header("Assist")]
         [SerializeField] private bool steeringAssist = true;
@@ -95,10 +95,14 @@ namespace AIGame.Gameplay
             }
 
             Vector3 position = transform.position;
+            if (!PassageNetwork.Locate(position, out Passage passage, out float s, out _, out _))
+            {
+                return input;
+            }
 
-            // Heading: point the nose along the artery a little way ahead.
-            float aheadZ = Mathf.Clamp(position.z + lookAheadDistance, ArteryPath.MinTravelZ, ArteryPath.MaxTravelZ);
-            Vector3 localHeading = transform.InverseTransformDirection(ArteryPath.TangentAt(aheadZ));
+            // Heading: point the nose along the passage a little way ahead.
+            float aheadS = Mathf.Clamp(s + lookAheadDistance, passage.MinTravel, passage.MaxTravel);
+            Vector3 localHeading = transform.InverseTransformDirection(passage.TangentAt(aheadS));
             float yawError   = Mathf.Atan2(localHeading.x, localHeading.z) * Mathf.Rad2Deg;
             float pitchError = Mathf.Atan2(localHeading.y, new Vector2(localHeading.x, localHeading.z).magnitude) * Mathf.Rad2Deg;
             input.Yaw   = Mathf.Clamp(yawError   * headingGain / Mathf.Max(controller.YawSpeed,   1f), -maxSteerInput, maxSteerInput);
@@ -107,12 +111,12 @@ namespace AIGame.Gameplay
             // Throttle: cruise unless the player is throttling, and ease off before the far end.
             if (Mathf.Abs(input.Forward) < InputDeadzone)
             {
-                float remaining = ArteryPath.MaxTravelZ - position.z;
+                float remaining = passage.CapEnd ? passage.MaxTravel - s : float.MaxValue;
                 input.Forward = cruiseThrottle * Mathf.Clamp01(remaining / Mathf.Max(slowDownDistance, 0.01f));
             }
 
             // Lane: drift back to the centreline on any axis the player isn't using.
-            Vector3 toCenter = transform.InverseTransformDirection(ArteryPath.CenterAt(position.z) - position);
+            Vector3 toCenter = transform.InverseTransformDirection(passage.CenterAt(s) - position);
             if (Mathf.Abs(input.Strafe) < InputDeadzone)
             {
                 input.Strafe = Mathf.Clamp(toCenter.x * centeringGain, -1f, 1f);
@@ -130,9 +134,12 @@ namespace AIGame.Gameplay
         private ShipInput.State AssistSteering(ShipInput.State input)
         {
             Vector3 position = transform.position;
-            Vector3 center = ArteryPath.CenterAt(position.z);
+            if (!PassageNetwork.Locate(position, out Passage passage, out float s, out _, out float radial))
+            {
+                return input;
+            }
+            Vector3 center = passage.CenterAt(s);
 
-            float radial = ArteryPath.RadialFraction(position);
             if (radial > wallAvoidStart)
             {
                 float push = Mathf.Clamp01((radial - wallAvoidStart) / Mathf.Max(maxWallFraction - wallAvoidStart, 0.01f));
@@ -149,8 +156,8 @@ namespace AIGame.Gameplay
             bool steering = Mathf.Abs(input.Yaw) > InputDeadzone || Mathf.Abs(input.Pitch) > InputDeadzone;
             if (!steering)
             {
-                float aheadZ = Mathf.Clamp(position.z + lookAheadDistance, ArteryPath.MinTravelZ, ArteryPath.MaxTravelZ);
-                Vector3 line = ArteryPath.TangentAt(aheadZ);
+                float aheadS = Mathf.Clamp(s + lookAheadDistance, passage.MinTravel, passage.MaxTravel);
+                Vector3 line = passage.TangentAt(aheadS);
                 // Flying backwards down the artery is fine too: use whichever way the nose points.
                 if (Vector3.Dot(transform.forward, line) < 0f)
                 {
@@ -180,7 +187,7 @@ namespace AIGame.Gameplay
             }
 
             Vector3 position = rb.position;
-            if (!ArteryPath.ClampInside(ref position, maxWallFraction, hullClearance, ArteryPath.MinTravelZ, ArteryPath.MaxTravelZ, out Vector3 outward))
+            if (!PassageNetwork.ClampInside(ref position, maxWallFraction, hullClearance, out Vector3 outward))
             {
                 return;
             }

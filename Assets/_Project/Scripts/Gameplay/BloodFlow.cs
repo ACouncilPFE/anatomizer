@@ -4,10 +4,11 @@ using UnityEngine.Rendering;
 namespace AIGame.Gameplay
 {
     /// <summary>
-    /// Red blood cells drifting and tumbling down the artery. They have no colliders (so they never
+    /// Red blood cells drifting and tumbling down the passages of the network (shared out by
+    /// length). They have no colliders (so they never
     /// block shots), but they slide around the ship's capsule instead of passing through it, and
     /// report each brush against the hull (CellBrushedShip) so ShipAudio can play a rub.
-    /// Cells that reach the far end re-enter at the near end.
+    /// Cells that reach the far end of their passage re-enter at its start.
     /// </summary>
     public class BloodFlow : MonoBehaviour
     {
@@ -28,7 +29,8 @@ namespace AIGame.Gameplay
         private struct Cell
         {
             public Transform transform;
-            public float z;
+            public Passage passage;
+            public float s;
             public float angle;
             public float radial;
             public float speed;
@@ -56,9 +58,34 @@ namespace AIGame.Gameplay
             mat.EnableKeyword("_EMISSION");
             mat.SetColor("_EmissionColor", new Color(0.09f, 0f, 0.01f));
 
+            if (PassageNetwork.All.Count == 0)
+            {
+                return;
+            }
+
+            float totalLength = 0f;
+            foreach (Passage p in PassageNetwork.All)
+            {
+                totalLength += p.MaxTravel - p.MinTravel;
+            }
+
             cells = new Cell[count];
             for (int i = 0; i < count; i++)
             {
+                // Pick a passage in proportion to its length, so the blood is spread evenly.
+                float pick = Random.value * totalLength;
+                Passage passage = PassageNetwork.Main;
+                foreach (Passage p in PassageNetwork.All)
+                {
+                    float span = p.MaxTravel - p.MinTravel;
+                    if (pick <= span)
+                    {
+                        passage = p;
+                        break;
+                    }
+                    pick -= span;
+                }
+
                 GameObject go = new GameObject("RedBloodCell_" + i);
                 go.transform.SetParent(transform, false);
                 go.AddComponent<MeshFilter>().sharedMesh = mesh;
@@ -73,7 +100,8 @@ namespace AIGame.Gameplay
                 cells[i] = new Cell
                 {
                     transform = go.transform,
-                    z = Random.Range(ArteryPath.MinTravelZ, ArteryPath.MaxTravelZ),
+                    passage = passage,
+                    s = Random.Range(passage.MinTravel, passage.MaxTravel),
                     angle = Random.Range(0f, Mathf.PI * 2f),
                     radial = Mathf.Sqrt(Random.value) * maxRadialFraction,
                     speed = Random.Range(minSpeed, maxSpeed),
@@ -134,21 +162,16 @@ namespace AIGame.Gameplay
                 ref Cell c = ref cells[i];
 
                 // Blood moves fastest in the middle of the vessel and slowest near the wall.
-                c.z += c.speed * (1.15f - c.radial * 0.6f) * dt;
-                if (c.z > ArteryPath.MaxTravelZ)
+                c.s += c.speed * (1.15f - c.radial * 0.6f) * dt;
+                if (c.s > c.passage.MaxTravel)
                 {
-                    c.z = ArteryPath.MinTravelZ;
+                    c.s = c.passage.MinTravel;
                     c.push = Vector3.zero;
                     c.touching = false;
                 }
                 c.angle += c.driftRate * dt;
 
-                Vector3 center = ArteryPath.CenterAt(c.z);
-                Vector2 radii = ArteryPath.RadiiAt(c.z);
-                Vector3 position = center + new Vector3(
-                    Mathf.Cos(c.angle) * radii.x * c.radial,
-                    Mathf.Sin(c.angle) * radii.y * c.radial,
-                    0f);
+                Vector3 position = c.passage.PointAt(c.s, c.angle, c.radial);
 
                 c.push *= Mathf.Exp(-dt * 0.8f); // the flow slowly carries shoved cells back into line
                 if (ship != null)
