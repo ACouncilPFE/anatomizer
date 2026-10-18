@@ -76,30 +76,31 @@ namespace AIGame.Gameplay
             Strip(screen);
             screen.transform.SetParent(transform, false);
             // Big panoramic windshield: most of the view is the artery ahead.
-            screen.transform.localPosition = new Vector3(0f, 1.6f, 2.25f);
-            screen.transform.localScale = new Vector3(4.4f, 2.5f, 1f);
+            // A huge windshield filling the front of the cabin: most of what the crew see is artery.
+            screen.transform.localPosition = new Vector3(0f, 1.55f, 1.75f);
+            screen.transform.localScale = new Vector3(4.9f, 2.9f, 1f);
             screen.GetComponent<Renderer>().sharedMaterial = ScreenMaterial(windshieldView);
-            Part(PrimitiveType.Cube, "FrameTop", new Vector3(0f, 2.87f, 2.22f), new Vector3(4.6f, 0.07f, 0.07f), trim);
-            Part(PrimitiveType.Cube, "FrameBottom", new Vector3(0f, 0.33f, 2.22f), new Vector3(4.6f, 0.07f, 0.07f), trim);
-            Part(PrimitiveType.Cube, "FrameLeft", new Vector3(-2.23f, 1.6f, 2.22f), new Vector3(0.07f, 2.6f, 0.07f), trim);
-            Part(PrimitiveType.Cube, "FrameRight", new Vector3(2.23f, 1.6f, 2.22f), new Vector3(0.07f, 2.6f, 0.07f), trim);
+            Part(PrimitiveType.Cube, "FrameTop", new Vector3(0f, 3.02f, 1.72f), new Vector3(5.1f, 0.07f, 0.07f), trim);
+            Part(PrimitiveType.Cube, "FrameBottom", new Vector3(0f, 0.08f, 1.72f), new Vector3(5.1f, 0.07f, 0.07f), trim);
+            Part(PrimitiveType.Cube, "FrameLeft", new Vector3(-2.48f, 1.55f, 1.72f), new Vector3(0.07f, 3f, 0.07f), trim);
+            Part(PrimitiveType.Cube, "FrameRight", new Vector3(2.48f, 1.55f, 1.72f), new Vector3(0.07f, 3f, 0.07f), trim);
 
             // Dashboard with glowing strips.
             // Low dashboard, so it doesn't block the windshield.
-            Part(PrimitiveType.Cube, "Dashboard", new Vector3(0f, 0.42f, 1.95f), new Vector3(2.8f, 0.32f, 0.6f), trim);
-            Part(PrimitiveType.Cube, "DashGlowL", new Vector3(-0.55f, 0.59f, 1.85f), new Vector3(0.7f, 0.02f, 0.25f), glowCyan);
-            Part(PrimitiveType.Cube, "DashGlowR", new Vector3(0.55f, 0.59f, 1.85f), new Vector3(0.7f, 0.02f, 0.25f), glowAmber);
+            Part(PrimitiveType.Cube, "Dashboard", new Vector3(0f, 0.32f, 1.45f), new Vector3(3.2f, 0.28f, 0.45f), trim);
+            Part(PrimitiveType.Cube, "DashGlowL", new Vector3(-0.55f, 0.47f, 1.38f), new Vector3(0.7f, 0.02f, 0.25f), glowCyan);
+            Part(PrimitiveType.Cube, "DashGlowR", new Vector3(0.55f, 0.47f, 1.38f), new Vector3(0.7f, 0.02f, 0.25f), glowAmber);
 
             // Crew. Front: pilot (left) and co-pilot (right). Rear: surgeon (left) and navigator (right).
-            pilot = Crew("Pilot", new Color(0.15f, 0.3f, 0.75f), new Vector3(-0.55f, 0f, 1.05f), 0f);
-            coPilot = Crew("Co-pilot", new Color(0.85f, 0.42f, 0.1f), new Vector3(0.55f, 0f, 1.05f), 0f);
+            pilot = Crew("Pilot", new Color(0.15f, 0.3f, 0.75f), new Vector3(-0.55f, 0f, 0.8f), 0f);
+            coPilot = Crew("Co-pilot", new Color(0.85f, 0.42f, 0.1f), new Vector3(0.55f, 0f, 0.8f), 0f);
             surgeon = Crew("Surgeon", new Color(0.15f, 0.55f, 0.35f), new Vector3(-1.05f, 0f, 0.15f), -90f);
             navigator = Crew("Navigator", new Color(0.5f, 0.25f, 0.6f), new Vector3(1.05f, 0f, 0.15f), 90f);
 
             // Pilot's control stick.
             stick = new GameObject("Stick").transform;
             stick.SetParent(transform, false);
-            stick.localPosition = new Vector3(-0.55f, 0.5f, 1.5f);
+            stick.localPosition = new Vector3(-0.55f, 0.42f, 1.18f);
             Transform shaft = Part(PrimitiveType.Cylinder, "Shaft", Vector3.zero, new Vector3(0.05f, 0.18f, 0.05f), trim);
             shaft.SetParent(stick, false);
             shaft.localPosition = new Vector3(0f, 0.18f, 0f);
@@ -116,11 +117,11 @@ namespace AIGame.Gameplay
             // Text faces into the cabin, readable from the camera.
             beamText = Label("BeamText", new Vector3(-1.47f, 1.1f, 0.15f), Quaternion.Euler(0f, -90f, 0f), 0.016f, new Color(0.7f, 0.95f, 1f));
             vitalsText = Label("VitalsText", new Vector3(1.47f, 1.1f, 0.15f), Quaternion.Euler(0f, 90f, 0f), 0.016f, new Color(0.6f, 1f, 0.8f));
-            gunnerText = Label("GunnerText", new Vector3(0.55f, 0.61f, 1.7f), Quaternion.Euler(60f, 0f, 0f), 0.018f, new Color(1f, 0.75f, 0.4f));
+            gunnerText = Label("GunnerText", new Vector3(0.55f, 0.49f, 1.25f), Quaternion.Euler(60f, 0f, 0f), 0.018f, new Color(1f, 0.75f, 0.4f));
 
             // Name tags.
-            Label("PilotTag", new Vector3(-0.55f, 1.85f, 1.05f), Quaternion.identity, 0.016f, Color.white).text = "PILOT";
-            Label("CoPilotTag", new Vector3(0.55f, 1.85f, 1.05f), Quaternion.identity, 0.016f, Color.white).text = "CO-PILOT";
+            Label("PilotTag", new Vector3(-0.55f, 1.85f, 0.8f), Quaternion.identity, 0.016f, Color.white).text = "PILOT";
+            Label("CoPilotTag", new Vector3(0.55f, 1.85f, 0.8f), Quaternion.identity, 0.016f, Color.white).text = "CO-PILOT";
             Label("SurgeonTag", new Vector3(-1.05f, 1.75f, 0.15f), Quaternion.identity, 0.012f, Color.white).text = "SURGEON";
             Label("NavigatorTag", new Vector3(1.05f, 1.75f, 0.15f), Quaternion.identity, 0.012f, Color.white).text = "NAVIGATOR";
 
@@ -135,7 +136,7 @@ namespace AIGame.Gameplay
             // Just behind the front seats, at head height: the windshield fills most of the frame,
             // with the pilot and co-pilot below it and the surgeon and navigator at the sides.
             CameraMount.localPosition = new Vector3(0f, 1.75f, -1.1f);
-            CameraMount.localRotation = Quaternion.LookRotation(new Vector3(0f, 1.5f, 2.25f) - CameraMount.localPosition);
+            CameraMount.localRotation = Quaternion.LookRotation(new Vector3(0f, 1.5f, 1.75f) - CameraMount.localPosition);
         }
 
         private void Update()
