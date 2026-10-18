@@ -5,7 +5,7 @@ namespace AIGame.Gameplay
     /// <summary>
     /// A window into the capsule for flat-screen play: a camera behind the crew (CockpitSet), with
     /// the windshield showing the live view from a camera on the ship's nose.
-    /// Press V to cycle: small window (bottom right) -> full-screen cockpit -> off.
+    /// Press V to cycle: window (bottom right) -> large window -> full-screen cockpit -> off.
     /// In VR you are already sitting in the cockpit, so this switches itself off.
     /// </summary>
     [RequireComponent(typeof(ShipController))]
@@ -14,13 +14,15 @@ namespace AIGame.Gameplay
         public enum Mode
         {
             Window,
+            Large,
             FullScreen,
             Off
         }
 
         [SerializeField] private Mode mode = Mode.Window;
         [SerializeField] private Vector2Int resolution = new Vector2Int(960, 540);
-        [SerializeField, Range(0.15f, 0.6f)] private float windowWidthFraction = 0.32f;
+        [SerializeField, Range(0.15f, 0.9f)] private float windowWidthFraction = 0.42f;
+        [SerializeField, Range(0.15f, 0.9f)] private float largeWidthFraction = 0.66f;
 
         private RenderTexture noseView;
         private RenderTexture cabinView;
@@ -48,7 +50,7 @@ namespace AIGame.Gameplay
             nose.transform.SetParent(transform, false);
             nose.transform.localPosition = new Vector3(0f, 0.15f, 1.05f);
             noseCamera = nose.AddComponent<Camera>();
-            noseCamera.fieldOfView = 80f;
+            noseCamera.fieldOfView = 100f; // wide, to take in as much of the artery wall as possible
             noseCamera.nearClipPlane = 0.05f;
             noseCamera.farClipPlane = 360f;
             noseCamera.targetTexture = noseView;
@@ -60,7 +62,7 @@ namespace AIGame.Gameplay
             GameObject cabin = new GameObject("Cockpit Camera");
             cabin.transform.SetParent(set.CameraMount, false);
             cabinCamera = cabin.AddComponent<Camera>();
-            cabinCamera.fieldOfView = 62f;
+            cabinCamera.fieldOfView = 72f;
             cabinCamera.nearClipPlane = 0.05f;
             cabinCamera.farClipPlane = 12f; // sees only the set
             cabinCamera.clearFlags = CameraClearFlags.SolidColor;
@@ -82,7 +84,7 @@ namespace AIGame.Gameplay
             bool toggle = ShipInput.Read().ToggleCockpitView;
             if (toggle && !toggleHeld)
             {
-                mode = (Mode)(((int)mode + 1) % 3);
+                mode = (Mode)(((int)mode + 1) % 4);
                 ApplyMode();
             }
             toggleHeld = toggle;
@@ -121,7 +123,7 @@ namespace AIGame.Gameplay
             }
             else
             {
-                float width = Screen.width * windowWidthFraction;
+                float width = Screen.width * (mode == Mode.Large ? largeWidthFraction : windowWidthFraction);
                 float height = width * resolution.y / resolution.x;
                 rect = new Rect(Screen.width - width - 16f, Screen.height - height - 16f, width, height);
 
@@ -129,7 +131,7 @@ namespace AIGame.Gameplay
                 GUI.color = new Color(0f, 0f, 0f, 0.7f);
                 GUI.DrawTexture(new Rect(rect.x - 3f, rect.y - 22f, rect.width + 6f, rect.height + 25f), Texture2D.whiteTexture);
                 GUI.color = new Color(0.6f, 0.9f, 1f);
-                GUI.Label(new Rect(rect.x + 4f, rect.y - 20f, rect.width, 18f), "COCKPIT  [V] bigger / off", titleStyle);
+                GUI.Label(new Rect(rect.x + 4f, rect.y - 20f, rect.width, 18f), mode == Mode.Large ? "COCKPIT  [V] full screen" : "COCKPIT  [V] bigger", titleStyle);
             }
 
             GUI.color = Color.white;
