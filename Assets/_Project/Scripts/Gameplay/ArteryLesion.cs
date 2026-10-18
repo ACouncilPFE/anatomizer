@@ -569,13 +569,11 @@ namespace AIGame.Gameplay
                 return;
             }
 
+            // Follow whichever camera is main right now (chase camera or the cockpit pilot view).
+            cam = Camera.main;
             if (cam == null)
             {
-                cam = Camera.main;
-                if (cam == null)
-                {
-                    return;
-                }
+                return;
             }
 
             Vector3 anchor = type == LesionType.Blockage

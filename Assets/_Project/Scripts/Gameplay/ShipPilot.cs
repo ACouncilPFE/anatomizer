@@ -15,7 +15,9 @@ namespace AIGame.Gameplay
     ///      throttle (W/S), shift lanes (A/D, E/Q) and boost; the pilot only takes the stick when
     ///      you let go.
     ///
-    /// In Assist mode (the default) you fly and the pilot only enforces the walls.
+    /// In Assist mode (the default) you fly. Besides enforcing the walls, the pilot steers you off
+    /// a wall before you reach it, and (only while you aren't touching the steering) brings the
+    /// nose back if it swings too far off the line of the artery, so you can still aim at things.
     /// </summary>
     [DefaultExecutionOrder(50)] // FixedUpdate after ShipController, so containment has the last word
     [RequireComponent(typeof(ShipController))]
@@ -33,6 +35,12 @@ namespace AIGame.Gameplay
         [SerializeField, Range(0.3f, 1f)] private float maxWallFraction = 0.85f; // how close to the wall the pilot allows
         [SerializeField] private float hullClearance = 0.5f;                      // metres kept between hull and wall
         // Travel along the vessel is limited to ArteryPath.MinTravelZ..MaxTravelZ, short of the sealed ends.
+
+        [Header("Assist")]
+        [SerializeField] private bool steeringAssist = true;
+        [SerializeField, Range(0f, 1f)] private float wallAvoidStart = 0.5f;  // push off the wall beyond this share of the radius
+        [SerializeField, Range(0f, 90f)] private float noseFreedom = 25f;     // degrees off the artery line before the nose is brought back
+        [SerializeField] private float noseReturnGain = 2f;
 
         [Header("Autopilot")]
         [SerializeField, Range(0f, 1f)] private float cruiseThrottle = 0.55f;
@@ -77,13 +85,13 @@ namespace AIGame.Gameplay
 
         /// <summary>
         /// Called by ShipController with the player's input each frame. In Autopilot the pilot
-        /// fills in whatever the player isn't doing; in Assist the input passes through untouched.
+        /// fills in whatever the player isn't doing; in Assist it only adds the steering help.
         /// </summary>
         public ShipInput.State Steer(ShipInput.State input)
         {
             if (mode != Mode.Autopilot)
             {
-                return input;
+                return steeringAssist ? AssistSteering(input) : input;
             }
 
             Vector3 position = transform.position;
@@ -112,6 +120,53 @@ namespace AIGame.Gameplay
             if (Mathf.Abs(input.Rise) < InputDeadzone)
             {
                 input.Rise = Mathf.Clamp(toCenter.y * centeringGain, -1f, 1f);
+            }
+
+            return input;
+        }
+
+        // Gentle help for a human pilot: shove away from walls before contact, and pull the nose
+        // back toward the artery line when it has swung far off and the player isn't steering.
+        private ShipInput.State AssistSteering(ShipInput.State input)
+        {
+            Vector3 position = transform.position;
+            Vector3 center = ArteryPath.CenterAt(position.z);
+
+            float radial = ArteryPath.RadialFraction(position);
+            if (radial > wallAvoidStart)
+            {
+                float push = Mathf.Clamp01((radial - wallAvoidStart) / Mathf.Max(maxWallFraction - wallAvoidStart, 0.01f));
+                Vector3 toCenter = transform.InverseTransformDirection(center - position).normalized;
+                input.Strafe = Mathf.Clamp(input.Strafe + toCenter.x * push * 1.5f, -1f, 1f);
+                input.Rise = Mathf.Clamp(input.Rise + toCenter.y * push * 1.5f, -1f, 1f);
+                // Nose pointing into the wall: ease off the throttle instead of driving into it.
+                if (toCenter.z < 0f && input.Forward > 0f)
+                {
+                    input.Forward *= 1f - push * Mathf.Clamp01(-toCenter.z);
+                }
+            }
+
+            bool steering = Mathf.Abs(input.Yaw) > InputDeadzone || Mathf.Abs(input.Pitch) > InputDeadzone;
+            if (!steering)
+            {
+                float aheadZ = Mathf.Clamp(position.z + lookAheadDistance, ArteryPath.MinTravelZ, ArteryPath.MaxTravelZ);
+                Vector3 line = ArteryPath.TangentAt(aheadZ);
+                // Flying backwards down the artery is fine too: use whichever way the nose points.
+                if (Vector3.Dot(transform.forward, line) < 0f)
+                {
+                    line = -line;
+                }
+
+                float off = Vector3.Angle(transform.forward, line);
+                if (off > noseFreedom)
+                {
+                    Vector3 local = transform.InverseTransformDirection(line);
+                    float excess = (off - noseFreedom) / off;
+                    float yawError = Mathf.Atan2(local.x, local.z) * Mathf.Rad2Deg * excess;
+                    float pitchError = Mathf.Atan2(local.y, new Vector2(local.x, local.z).magnitude) * Mathf.Rad2Deg * excess;
+                    input.Yaw = Mathf.Clamp(yawError * noseReturnGain / Mathf.Max(controller.YawSpeed, 1f), -maxSteerInput, maxSteerInput);
+                    input.Pitch = Mathf.Clamp(pitchError * noseReturnGain / Mathf.Max(controller.PitchSpeed, 1f), -maxSteerInput, maxSteerInput);
+                }
             }
 
             return input;

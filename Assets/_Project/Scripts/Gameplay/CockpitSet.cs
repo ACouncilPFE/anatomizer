@@ -62,7 +62,7 @@ namespace AIGame.Gameplay
             Material screenGlow = Mat(new Color(0.02f, 0.04f, 0.05f), 0.9f, new Color(0.02f, 0.12f, 0.16f));
 
             // Hull: an egg-shaped shell seen from the inside, with ribs.
-            Transform shell = Part(PrimitiveType.Sphere, "Hull", new Vector3(0f, 1.2f, 0.2f), new Vector3(4.6f, 3.2f, 6.8f), hull);
+            Transform shell = Part(PrimitiveType.Sphere, "Hull", new Vector3(0f, 1.35f, 0.2f), new Vector3(5.4f, 3.8f, 7f), hull);
             FlipInsideOut(shell.GetComponent<MeshFilter>());
             for (int i = 0; i < 4; i++)
             {
@@ -76,13 +76,13 @@ namespace AIGame.Gameplay
             Strip(screen);
             screen.transform.SetParent(transform, false);
             // Big panoramic windshield: most of the view is the artery ahead.
-            screen.transform.localPosition = new Vector3(0f, 1.45f, 2.25f);
-            screen.transform.localScale = new Vector3(3.6f, 2.0f, 1f);
+            screen.transform.localPosition = new Vector3(0f, 1.6f, 2.25f);
+            screen.transform.localScale = new Vector3(4.4f, 2.5f, 1f);
             screen.GetComponent<Renderer>().sharedMaterial = ScreenMaterial(windshieldView);
-            Part(PrimitiveType.Cube, "FrameTop", new Vector3(0f, 2.47f, 2.22f), new Vector3(3.8f, 0.07f, 0.07f), trim);
-            Part(PrimitiveType.Cube, "FrameBottom", new Vector3(0f, 0.43f, 2.22f), new Vector3(3.8f, 0.07f, 0.07f), trim);
-            Part(PrimitiveType.Cube, "FrameLeft", new Vector3(-1.83f, 1.45f, 2.22f), new Vector3(0.07f, 2.1f, 0.07f), trim);
-            Part(PrimitiveType.Cube, "FrameRight", new Vector3(1.83f, 1.45f, 2.22f), new Vector3(0.07f, 2.1f, 0.07f), trim);
+            Part(PrimitiveType.Cube, "FrameTop", new Vector3(0f, 2.87f, 2.22f), new Vector3(4.6f, 0.07f, 0.07f), trim);
+            Part(PrimitiveType.Cube, "FrameBottom", new Vector3(0f, 0.33f, 2.22f), new Vector3(4.6f, 0.07f, 0.07f), trim);
+            Part(PrimitiveType.Cube, "FrameLeft", new Vector3(-2.23f, 1.6f, 2.22f), new Vector3(0.07f, 2.6f, 0.07f), trim);
+            Part(PrimitiveType.Cube, "FrameRight", new Vector3(2.23f, 1.6f, 2.22f), new Vector3(0.07f, 2.6f, 0.07f), trim);
 
             // Dashboard with glowing strips.
             // Low dashboard, so it doesn't block the windshield.
@@ -135,7 +135,7 @@ namespace AIGame.Gameplay
             // Just behind the front seats, at head height: the windshield fills most of the frame,
             // with the pilot and co-pilot below it and the surgeon and navigator at the sides.
             CameraMount.localPosition = new Vector3(0f, 1.75f, -1.1f);
-            CameraMount.localRotation = Quaternion.LookRotation(new Vector3(0f, 1.4f, 2.25f) - CameraMount.localPosition);
+            CameraMount.localRotation = Quaternion.LookRotation(new Vector3(0f, 1.5f, 2.25f) - CameraMount.localPosition);
         }
 
         private void Update()
