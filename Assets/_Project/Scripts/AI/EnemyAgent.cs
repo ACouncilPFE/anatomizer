@@ -148,6 +148,7 @@ namespace AIGame.AI
             {
                 currentState = EnemyAgentState.Dead;
                 GameEvents.RaiseCellDestroyed(IsCurable);
+                GameAudio.PlayAt(ProceduralAudio.CellPop, transform.position, 0.9f, Random.Range(0.9f, 1.1f));
                 Destroy(gameObject);
             }
         }
@@ -167,6 +168,7 @@ namespace AIGame.AI
             if (!IsCurable)
             {
                 lastResistedTime = Time.time;
+                GameAudio.PlayAt(ProceduralAudio.WrongTool, transform.position, 0.6f, 1f, 0.4f);
                 return;
             }
 
@@ -183,6 +185,7 @@ namespace AIGame.AI
             }
 
             GameEvents.RaiseCellRepaired();
+            GameAudio.PlayAt(ProceduralAudio.CellHealed, transform.position, 0.8f);
             Destroy(gameObject, repairedLingerSeconds);
         }
 

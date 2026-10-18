@@ -148,6 +148,8 @@ namespace AIGame.Gameplay
             shot.Configure(enemy.IsCurable ? ProjectileEffect.Repair : ProjectileEffect.Damage);
             shot.gameObject.SetActive(true); // the runtime template is kept inactive
 
+            // A little quieter and lower than the main gun, so you can tell who is shooting.
+            GameAudio.Play(enemy.IsCurable ? ProceduralAudio.Medicine : ProceduralAudio.Laser, 0.3f, 0.85f, 0f);
             nextFireTime = Time.time + 1f / Mathf.Max(fireRate, 0.01f);
         }
     }

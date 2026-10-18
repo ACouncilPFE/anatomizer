@@ -4,8 +4,10 @@ using UnityEngine.Rendering;
 namespace AIGame.Gameplay
 {
     /// <summary>
-    /// Red blood cells drifting and tumbling down the artery. Purely visual: no colliders, so they
-    /// never block shots or the ship. Cells that reach the far end re-enter at the near end.
+    /// Red blood cells drifting and tumbling down the artery. They have no colliders (so they never
+    /// block shots), but they slide around the ship's capsule instead of passing through it, and
+    /// report each brush against the hull (CellBrushedShip) so ShipAudio can play a rub.
+    /// Cells that reach the far end re-enter at the near end.
     /// </summary>
     public class BloodFlow : MonoBehaviour
     {
@@ -14,6 +16,14 @@ namespace AIGame.Gameplay
         [SerializeField] private float minSpeed = 2.5f;
         [SerializeField] private float maxSpeed = 5.5f;
         [SerializeField, Range(0f, 1f)] private float maxRadialFraction = 0.75f;
+        [SerializeField] private float hullClearance = 1f;     // capsule radius + cell radius
+        [SerializeField] private float hullHalfLength = 0.6f;  // capsule's straight section, either side of centre
+
+        /// <summary>A cell started rubbing against the ship: where, and how hard (0..1).</summary>
+        public static event System.Action<Vector3, float> CellBrushedShip;
+
+        private Transform ship;
+        private Rigidbody shipBody;
 
         private struct Cell
         {
@@ -26,6 +36,8 @@ namespace AIGame.Gameplay
             public Vector3 spinAxis;
             public float spinRate;
             public Quaternion baseRotation;
+            public Vector3 push;      // how far the ship has shoved this cell aside
+            public bool touching;
         }
 
         private Cell[] cells;
@@ -73,6 +85,32 @@ namespace AIGame.Gameplay
             }
         }
 
+        // Slide the cell around the capsule rather than through it, and report the first contact.
+        private void PushOffHull(ref Cell c, Vector3 position)
+        {
+            Vector3 axis = ship.forward;
+            float along = Mathf.Clamp(Vector3.Dot(position - ship.position, axis), -hullHalfLength, hullHalfLength);
+            Vector3 nearest = ship.position + axis * along;
+            Vector3 away = position - nearest;
+            float distance = away.magnitude;
+
+            if (distance < hullClearance)
+            {
+                Vector3 direction = distance > 0.001f ? away / distance : Random.onUnitSphere;
+                c.push += direction * (hullClearance - distance);
+                if (!c.touching)
+                {
+                    c.touching = true;
+                    float speed = shipBody != null ? shipBody.velocity.magnitude : 0f;
+                    CellBrushedShip?.Invoke(nearest + direction * 0.4f, Mathf.Clamp01(0.3f + speed / 40f));
+                }
+            }
+            else if (distance > hullClearance + 0.5f)
+            {
+                c.touching = false;
+            }
+        }
+
         private void Update()
         {
             if (cells == null)
@@ -81,6 +119,16 @@ namespace AIGame.Gameplay
             }
 
             float dt = Time.deltaTime;
+            if (ship == null)
+            {
+                ShipController controller = FindObjectOfType<ShipController>();
+                if (controller != null)
+                {
+                    ship = controller.transform;
+                    shipBody = controller.GetComponent<Rigidbody>();
+                }
+            }
+
             for (int i = 0; i < cells.Length; i++)
             {
                 ref Cell c = ref cells[i];
@@ -90,15 +138,24 @@ namespace AIGame.Gameplay
                 if (c.z > ArteryPath.MaxTravelZ)
                 {
                     c.z = ArteryPath.MinTravelZ;
+                    c.push = Vector3.zero;
+                    c.touching = false;
                 }
                 c.angle += c.driftRate * dt;
 
                 Vector3 center = ArteryPath.CenterAt(c.z);
                 Vector2 radii = ArteryPath.RadiiAt(c.z);
-                c.transform.localPosition = center + new Vector3(
+                Vector3 position = center + new Vector3(
                     Mathf.Cos(c.angle) * radii.x * c.radial,
                     Mathf.Sin(c.angle) * radii.y * c.radial,
                     0f);
+
+                c.push *= Mathf.Exp(-dt * 0.8f); // the flow slowly carries shoved cells back into line
+                if (ship != null)
+                {
+                    PushOffHull(ref c, position + c.push);
+                }
+                c.transform.localPosition = position + c.push;
                 c.baseRotation = Quaternion.AngleAxis(c.spinRate * dt, c.spinAxis) * c.baseRotation;
                 c.transform.localRotation = c.baseRotation;
             }

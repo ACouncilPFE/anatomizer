@@ -99,15 +99,22 @@ namespace AIGame.Gameplay
                 return;
             }
 
+            bool hitSomething;
             if (effect == ProjectileEffect.Repair)
             {
-                other.GetComponentInParent<IRepairable>()?.Repair(repairAmount);
+                IRepairable target = other.GetComponentInParent<IRepairable>();
+                target?.Repair(repairAmount);
+                hitSomething = target != null;
             }
             else
             {
-                other.GetComponentInParent<IDamageable>()?.ApplyDamage(damage);
+                IDamageable target = other.GetComponentInParent<IDamageable>();
+                target?.ApplyDamage(damage);
+                hitSomething = target != null;
             }
 
+            GameAudio.PlayAt(hitSomething ? ProceduralAudio.HitSquish : ProceduralAudio.HitWall, transform.position,
+                hitSomething ? 0.7f : 0.4f, Random.Range(0.85f, 1.15f), 0.03f);
             Despawn();
         }
 

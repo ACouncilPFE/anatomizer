@@ -179,6 +179,7 @@ namespace AIGame.Gameplay
             if (tool != RequiredTool)
             {
                 lastWrongToolTime = Time.time;
+                GameAudio.PlayAt(ProceduralAudio.WrongTool, transform.position, 0.6f, 1f, 0.5f);
                 return;
             }
 
@@ -210,6 +211,7 @@ namespace AIGame.Gameplay
             }
 
             GameEvents.RaiseLesionTreated();
+            GameAudio.PlayAt(ProceduralAudio.LesionFixed, transform.position, 0.85f);
         }
 
         private void Update()
