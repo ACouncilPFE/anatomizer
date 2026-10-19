@@ -103,10 +103,10 @@ namespace AIGame.UI
             DrawGut();
 
             GUI.color = new Color(1f, 1f, 1f, 0.6f);
-            string missions = "";
+            string missions = "[M] mission menu    ";
             foreach (var mission in MissionSelector.Missions)
             {
-                missions += $"[{mission.key} or Ctrl+{mission.number.ToString().Replace("Alpha", "")}] {mission.title}    ";
+                missions += $"[{mission.key}] {mission.title}    ";
             }
             GUI.Label(new Rect(20, _virtualHeight - 88, 1800, 30), missions, _hintStyle);
 
