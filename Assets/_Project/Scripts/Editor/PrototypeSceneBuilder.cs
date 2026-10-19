@@ -103,7 +103,7 @@ namespace AIGame.Editor
             EditorUtility.DisplayDialog("Done", "Prototype scene created at:\n" + ScenePath + "\n\nPress Play to run. Left-click to fire.", "OK");
         }
 
-        private static void CreateDirectionalLight()
+        internal static void CreateDirectionalLight()
         {
             GameObject lightObj = new GameObject("Directional Light");
             Light light = lightObj.AddComponent<Light>();
@@ -114,7 +114,7 @@ namespace AIGame.Editor
             GameObjectUtility.SetStaticEditorFlags(lightObj, StaticEditorFlags.ContributeGI);
         }
 
-        private static GameObject CreateCamera()
+        internal static GameObject CreateCamera()
         {
             GameObject camObj = new GameObject("Main Camera");
             camObj.tag = "MainCamera";
@@ -140,7 +140,7 @@ namespace AIGame.Editor
             ArteryEnvironment.ApplyAtmosphere();
         }
 
-        private static GameObject CreateShip()
+        internal static GameObject CreateShip()
         {
             GameObject ship = new GameObject("Ship");
             ship.tag = "Player";
@@ -185,13 +185,16 @@ namespace AIGame.Editor
             // Co-pilot borrows the main gun's projectile and fire point.
             ship.AddComponent<ShipCoPilot>();
             ship.AddComponent<SurgicalBeam>();
+            ship.AddComponent<ShipAudio>();
+            ship.AddComponent<CockpitView>();
+            ship.AddComponent<MedicalVesselModel>();
 
             ship.transform.position = new Vector3(0f, 0f, 0f);
             ship.transform.rotation = Quaternion.identity;
             return ship;
         }
 
-        private static void CreateGameManager()
+        internal static void CreateGameManager()
         {
             GameObject gmObj = new GameObject("GameManager");
             GameManager gm = gmObj.AddComponent<GameManager>();
@@ -202,7 +205,7 @@ namespace AIGame.Editor
             gmSO.ApplyModifiedPropertiesWithoutUndo();
         }
 
-        private static GameObject CreateSpawner(GameObject shipRoot)
+        internal static GameObject CreateSpawner(GameObject shipRoot)
         {
             GameObject spawnerObj = new GameObject("ZoneSpawner");
             spawnerObj.AddComponent<MissionZoneSpawner>();
@@ -399,7 +402,7 @@ namespace AIGame.Editor
         private static void CreateArteryEnvironment(Vector3 shipOrigin)
         {
             // The sealed vessel, its lining, the blood flow and the ship's endoscope light all come
-            // from ArteryEnvironment (built from ArteryPath, which starts at the ship's origin).
+            // from ArteryEnvironment (built from ArteryLayout's passages, which start at the ship's origin).
             GameObject arteryRoot = new GameObject("ArteryTunnel");
 
             GameObject tubeObj = new GameObject(ArteryEnvironment.TunnelObjectName);
@@ -414,14 +417,14 @@ namespace AIGame.Editor
             tubeObj.AddComponent<ArteryEnvironment>().BuildWall();
         }
 
-        private static void CreateHUD()
+        internal static void CreateHUD()
         {
             GameObject hud = new GameObject("HUD");
             hud.AddComponent<GameHUD>();
             hud.AddComponent<MissionZoneSpawnerHUD>();
         }
 
-        private static void CreateObjectiveManager()
+        internal static void CreateObjectiveManager()
         {
             GameObject objMgrObj = new GameObject("ObjectiveManager");
             objMgrObj.AddComponent<ObjectiveManager>();

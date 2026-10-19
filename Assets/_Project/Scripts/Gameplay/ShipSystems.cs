@@ -14,6 +14,14 @@ namespace AIGame.Gameplay
         [SerializeField, Range(0f, 1f)] private float disruptedSensorsPower;
         [SerializeField] private float sensorsDisruptionTimer;
 
+        private bool shieldBoost;
+        private bool toggleHeld;
+
+        /// <summary>H: route power from propulsion to shields (less acid damage, lower speed).</summary>
+        public bool ShieldBoost => shieldBoost;
+        /// <summary>How much damage from the environment gets through the shields (1 = all of it).</summary>
+        public float ShieldLeak => Mathf.Lerp(1f, 0.15f, shieldsPower);
+
         public float PropulsionPower => propulsionPower;
         public float ShieldsPower => shieldsPower;
         public float SensorsPower => disruptedSensorsPower;
@@ -26,6 +34,13 @@ namespace AIGame.Gameplay
 
         private void Update()
         {
+            bool toggle = ShipInput.Read().ToggleShieldBoost;
+            if (toggle && !toggleHeld)
+            {
+                SetShieldBoost(!shieldBoost);
+            }
+            toggleHeld = toggle;
+
             if (sensorsDisruptionTimer <= 0f)
             {
                 disruptedSensorsPower = sensorsPower;
@@ -49,6 +64,19 @@ namespace AIGame.Gameplay
             if (sensorsDisruptionTimer <= 0f)
             {
                 disruptedSensorsPower = sensorsPower;
+            }
+        }
+
+        public void SetShieldBoost(bool on)
+        {
+            shieldBoost = on;
+            if (on)
+            {
+                SetPowerAllocation(0.25f, 1f, sensorsPower, surgicalArrayPower);
+            }
+            else
+            {
+                SetPowerAllocation(0.5f, 0.5f, sensorsPower, surgicalArrayPower);
             }
         }
 

@@ -18,7 +18,15 @@ namespace AIGame.Gameplay
         /// <summary>A ring of plaque narrowing the whole vessel; opened with a balloon (angioplasty).</summary>
         Blockage,
         /// <summary>A metal splinter lodged in the wall; pulled out with the grabber.</summary>
-        ForeignObject
+        ForeignObject,
+        /// <summary>Heart: a torn valve leaflet that lets blood leak backwards; sutured shut.</summary>
+        LeakyValve,
+        /// <summary>Heart: a scar in the muscle wall that makes the rhythm irregular; lasered away (ablation).</summary>
+        ScarTissue,
+        /// <summary>Gut: a raw, bleeding sore in the stomach lining; sutured shut.</summary>
+        Ulcer,
+        /// <summary>Gut: a mushroom-shaped growth on the intestine wall; lasered off.</summary>
+        Polyp
     }
 
     /// <summary>Everything the ship can treat with: two guns and the four surgical-beam tools.</summary>
@@ -41,6 +49,10 @@ namespace AIGame.Gameplay
     ///   Aneurysm       stent beam    - grows, and bursts into a tear if left too long
     ///   Blockage       balloon beam  - narrows the vessel; fly into it and inflate
     ///   ForeignObject  grabber beam
+    ///   LeakyValve     suture beam   - heart: strains the heart until closed
+    ///   ScarTissue     laser         - heart: makes the heartbeat irregular until ablated
+    ///   Ulcer          suture beam   - gut: bleeds like a tear
+    ///   Polyp          laser         - gut
     ///
     /// ArteryLesionField places them. Wall lesions sit on the wall facing the vessel's centre;
     /// a blockage sits on the centreline, since it rings the whole vessel.
@@ -57,6 +69,7 @@ namespace AIGame.Gameplay
         [SerializeField] private float aneurysmBurstSeconds = 150f;
         [SerializeField] private float burstBloodLoss = 0.1f;
         [SerializeField] private float labelDistance = 60f;
+        [SerializeField] private float leakStrainPerSecond = 0.002f; // heart strain from a torn valve
 
         private const float BlockageHalfLength = 3f;
         private const float BlockageDepth = 0.6f;
@@ -66,7 +79,8 @@ namespace AIGame.Gameplay
         private float treatedTime;
         private float lastWrongToolTime = -999f;
         private float age;
-        private float z;
+        private Passage passage;
+        private float s;
 
         private Transform body;       // main mass, or the tear's dark gash
         private Transform rim;        // tear: raw red edges
@@ -98,6 +112,10 @@ namespace AIGame.Gameplay
             LesionType.Clot => SurgicalTool.Medicine,
             LesionType.Aneurysm => SurgicalTool.Stent,
             LesionType.Blockage => SurgicalTool.Balloon,
+            LesionType.LeakyValve => SurgicalTool.Suture,
+            LesionType.ScarTissue => SurgicalTool.Laser,
+            LesionType.Ulcer => SurgicalTool.Suture,
+            LesionType.Polyp => SurgicalTool.Laser,
             _ => SurgicalTool.Grabber
         };
 
@@ -108,6 +126,10 @@ namespace AIGame.Gameplay
             LesionType.Clot => "BLOOD CLOT",
             LesionType.Aneurysm => "ANEURYSM",
             LesionType.Blockage => "BLOCKAGE",
+            LesionType.LeakyValve => "TORN VALVE LEAFLET",
+            LesionType.ScarTissue => "SCAR TISSUE (irregular heartbeat)",
+            LesionType.Ulcer => "BLEEDING ULCER",
+            LesionType.Polyp => "POLYP",
             _ => "FOREIGN OBJECT"
         };
 
@@ -117,34 +139,38 @@ namespace AIGame.Gameplay
         {
             SurgicalTool.Laser => "laser it (left-click)",
             SurgicalTool.Medicine => "clot-buster medicine (right-click)",
-            SurgicalTool.Suture => "suture: beam tool 1, hold F",
-            SurgicalTool.Stent => "stent: beam tool 2, hold F",
-            SurgicalTool.Balloon => "balloon: beam tool 3, hold F inside it",
-            _ => "grabber: beam tool 4, hold F"
+            SurgicalTool.Suture => "press 1 for Suture, then hold F",
+            SurgicalTool.Stent => "press 2 for Stent, then hold F",
+            SurgicalTool.Balloon => "press 3 for Balloon, fly inside it, then hold F",
+            _ => "press 4 for Grabber, then hold F"
         };
 
         /// <summary>Where tools should aim.</summary>
         public Vector3 AimPoint => type == LesionType.Blockage ? transform.position : transform.position + transform.forward * 0.6f;
 
-        /// <summary>Place the lesion at depth z and angle (radians) around the vessel.</summary>
-        public void Configure(LesionType newType, float depthZ, float angle)
+        /// <summary>The passage this lesion is in, and how far along it.</summary>
+        public Passage Passage => passage;
+        public float S => s;
+
+        /// <summary>Place the lesion on a passage at s, at angle (radians) around it.</summary>
+        public void Configure(LesionType newType, Passage onPassage, float atS, float angle)
         {
             type = newType;
-            z = depthZ;
-            Vector3 center = ArteryPath.CenterAt(z);
+            passage = onPassage;
+            s = atS;
+            passage.Frame(s, out Vector3 center, out Vector3 tangent, out _, out Vector3 up);
 
             if (type == LesionType.Blockage)
             {
                 transform.position = center;
-                transform.rotation = Quaternion.LookRotation(ArteryPath.TangentAt(z));
+                transform.rotation = Quaternion.LookRotation(tangent, up);
             }
             else
             {
-                Vector2 radii = ArteryPath.RadiiAt(z);
-                Vector3 onWall = center + new Vector3(Mathf.Cos(angle) * radii.x, Mathf.Sin(angle) * radii.y, 0f) * 0.93f;
+                Vector3 onWall = passage.PointAt(s, angle, 0.93f);
                 transform.position = onWall;
-                // Face the middle of the vessel, with "up" running along the artery.
-                transform.rotation = Quaternion.LookRotation((center - onWall).normalized, ArteryPath.TangentAt(z));
+                // Face the middle of the vessel, with "up" running along it.
+                transform.rotation = Quaternion.LookRotation((center - onWall).normalized, tangent);
             }
 
             BuildVisual();
@@ -179,6 +205,7 @@ namespace AIGame.Gameplay
             if (tool != RequiredTool)
             {
                 lastWrongToolTime = Time.time;
+                GameAudio.PlayAt(ProceduralAudio.WrongTool, transform.position, 0.6f, 1f, 0.5f);
                 return;
             }
 
@@ -209,7 +236,13 @@ namespace AIGame.Gameplay
                 glow.enabled = false;
             }
 
+            if (type == LesionType.ScarTissue)
+            {
+                HeartBeat.Instance?.RemoveArrhythmiaSource();
+            }
+
             GameEvents.RaiseLesionTreated();
+            GameAudio.PlayAt(ProceduralAudio.LesionFixed, transform.position, 0.85f);
         }
 
         private void Update()
@@ -223,6 +256,7 @@ namespace AIGame.Gameplay
                 switch (type)
                 {
                     case LesionType.Tear:
+                    case LesionType.Ulcer:
                         GameManager.Instance?.AddBloodLoss(bleedPerSecond * (1f - Progress01) * dt);
                         if (glow != null)
                         {
@@ -244,6 +278,23 @@ namespace AIGame.Gameplay
                         }
                         break;
 
+                    case LesionType.LeakyValve:
+                        // Blood leaking back through the valve makes the heart work harder.
+                        GameManager.Instance?.AddStrain(leakStrainPerSecond * (1f - Progress01) * dt);
+                        if (glow != null)
+                        {
+                            glow.intensity = 0.8f + 0.4f * Mathf.Sin(Time.time * 6f);
+                        }
+                        break;
+
+                    case LesionType.ScarTissue:
+                        // Stray electrical sparks crackle across the scar.
+                        if (glow != null)
+                        {
+                            glow.intensity = Random.value < 0.08f ? Random.Range(1.5f, 3f) : Mathf.MoveTowards(glow.intensity, 0f, dt * 12f);
+                        }
+                        break;
+
                     case LesionType.ForeignObject:
                         // Being worked loose: slides out of the wall and rattles while the grabber pulls.
                         if (progress > 0f)
@@ -261,6 +312,8 @@ namespace AIGame.Gameplay
                 {
                     case LesionType.Plaque:
                     case LesionType.Clot:
+                    case LesionType.ScarTissue:
+                    case LesionType.Polyp:
                     case LesionType.ForeignObject:
                         if (body != null && body.gameObject.activeSelf)
                         {
@@ -322,6 +375,38 @@ namespace AIGame.Gameplay
                     break;
                 case LesionType.Blockage:
                     BuildBlockage();
+                    break;
+                case LesionType.LeakyValve:
+                    BuildTear();
+                    // A torn leaflet doesn't bleed out of the body: the blood leaks backwards, so no spray.
+                    if (bleed != null)
+                    {
+                        Destroy(bleed.gameObject);
+                        bleed = null;
+                    }
+                    glow.color = new Color(1f, 0.5f, 0.6f);
+                    break;
+                case LesionType.Ulcer:
+                    BuildTear();
+                    rim.localScale = new Vector3(1.6f, 0.75f, 1f); // a round crater rather than a slit
+                    body.localScale = new Vector3(1.5f, 0.7f, 1f);
+                    bodyScale = body.localScale;
+                    break;
+                case LesionType.Polyp:
+                    BuildPolyp();
+                    break;
+                case LesionType.ScarTissue:
+                    Hitbox(1.3f);
+                    body = Mass("Scar", LesionMeshes.Plaque, LesionMeshes.ScarTissueMaterial, new Vector3(2.8f, 2.2f, 0.7f));
+                    glow = new GameObject("Sparks").AddComponent<Light>();
+                    glow.transform.SetParent(transform, false);
+                    glow.transform.localPosition = new Vector3(0f, 0f, 0.8f);
+                    glow.type = LightType.Point;
+                    glow.color = new Color(0.7f, 0.9f, 1f);
+                    glow.range = 4f;
+                    glow.intensity = 0f;
+                    glow.shadows = LightShadows.None;
+                    HeartBeat.Instance?.AddArrhythmiaSource();
                     break;
                 default:
                     BuildForeignObject();
@@ -395,7 +480,7 @@ namespace AIGame.Gameplay
             steps.SetParent(transform, false);
             steps.position = Vector3.zero;
             steps.rotation = Quaternion.identity;
-            foreach (Mesh hoop in LesionMeshes.StentHoops(Vector3.zero, z, 2.2f, 6))
+            foreach (Mesh hoop in LesionMeshes.StentHoops(Vector3.zero, passage, s, 2.2f, 6))
             {
                 GameObject h = new GameObject("StentHoop");
                 h.transform.SetParent(steps, false);
@@ -409,7 +494,7 @@ namespace AIGame.Gameplay
 
         private void BuildBlockage()
         {
-            blockageMesh = LesionMeshes.StenosisBand(null, transform.position, z, BlockageHalfLength, BlockageDepth);
+            blockageMesh = LesionMeshes.StenosisBand(null, transform.position, passage, s, BlockageHalfLength, BlockageDepth);
             GameObject band = new GameObject("Blockage");
             band.transform.SetParent(transform, false);
             band.transform.rotation = Quaternion.identity; // mesh is in world axes around our position
@@ -424,6 +509,22 @@ namespace AIGame.Gameplay
 
             balloon = Part("Balloon", LesionMeshes.Sphere, LesionMeshes.BalloonMaterial, Vector3.zero);
             balloon.localScale = Vector3.zero;
+        }
+
+        // A polyp: a fleshy cap on a short stalk, growing out of the wall.
+        private void BuildPolyp()
+        {
+            Hitbox(1.2f);
+            body = new GameObject("Polyp").transform;
+            body.SetParent(transform, false);
+            Transform stalk = Part("Stalk", LesionMeshes.Sphere, LesionMeshes.PolypMaterial, new Vector3(0f, 0f, 0.5f));
+            stalk.SetParent(body, false);
+            stalk.localScale = new Vector3(0.45f, 0.45f, 1.2f);
+            Transform cap = Part("Cap", LesionMeshes.Plaque, LesionMeshes.PolypMaterial, new Vector3(0f, 0f, 1.15f));
+            cap.SetParent(body, false);
+            cap.localScale = new Vector3(1.5f, 1.4f, 1.1f);
+            body.localScale = Vector3.one * Random.Range(0.9f, 1.2f);
+            bodyScale = body.localScale;
         }
 
         private void BuildForeignObject()
@@ -490,6 +591,8 @@ namespace AIGame.Gameplay
             switch (type)
             {
                 case LesionType.Tear:
+                case LesionType.LeakyValve:
+                case LesionType.Ulcer:
                     // The gash narrows as it is pulled shut and stitches appear along it.
                     body.localScale = new Vector3(bodyScale.x * (1f - t), bodyScale.y, bodyScale.z);
                     rim.localScale = new Vector3(Mathf.Lerp(1f, 0.25f, t), 1f, 1f);
@@ -512,21 +615,23 @@ namespace AIGame.Gameplay
                 case LesionType.Blockage:
                     // The balloon inflates and presses the plaque back into the wall.
                     float depth = BlockageDepth * (1f - t);
-                    LesionMeshes.StenosisBand(blockageMesh, transform.position, z, BlockageHalfLength, depth);
+                    LesionMeshes.StenosisBand(blockageMesh, transform.position, passage, s, BlockageHalfLength, depth);
                     if (lastColliderDepth - depth > 0.08f)
                     {
                         blockageCollider.sharedMesh = null;
                         blockageCollider.sharedMesh = blockageMesh;
                         lastColliderDepth = depth;
                     }
-                    Vector2 radii = ArteryPath.RadiiAt(z);
+                    Vector2 radii = passage.RadiiAt(s);
                     float open = Mathf.Lerp(1f - BlockageDepth, 0.95f, t);
                     balloon.localScale = new Vector3(radii.x * 2f * open, radii.y * 2f * open, BlockageHalfLength * 1.6f) * Mathf.Clamp01(t * 4f);
                     break;
 
                 case LesionType.Plaque:
                 case LesionType.Clot:
-                    // Plaque breaks down / the clot dissolves.
+                case LesionType.ScarTissue:
+                case LesionType.Polyp:
+                    // Plaque breaks down / the clot dissolves / the scar or polyp is burned away.
                     body.localScale = bodyScale * Mathf.Lerp(1f, 0.3f, t);
                     break;
             }
@@ -567,17 +672,15 @@ namespace AIGame.Gameplay
                 return;
             }
 
+            // Follow whichever camera is main right now (chase camera or the cockpit pilot view).
+            cam = Camera.main;
             if (cam == null)
             {
-                cam = Camera.main;
-                if (cam == null)
-                {
-                    return;
-                }
+                return;
             }
 
-            Vector3 anchor = type == LesionType.Blockage
-                ? transform.position + Vector3.up * ArteryPath.RadiiAt(z).y * 0.5f
+            Vector3 anchor = type == LesionType.Blockage && passage != null
+                ? transform.position + transform.up * passage.RadiiAt(s).y * 0.5f
                 : transform.position + transform.forward * 1.5f;
             Vector3 screen = cam.WorldToScreenPoint(anchor);
             if (screen.z <= 0f || screen.z > labelDistance)
@@ -598,6 +701,10 @@ namespace AIGame.Gameplay
                     LesionType.Clot => "CLOT DISSOLVED",
                     LesionType.Aneurysm => "ANEURYSM STENTED",
                     LesionType.Blockage => "ARTERY REOPENED",
+                    LesionType.LeakyValve => "VALVE REPAIRED",
+                    LesionType.ScarTissue => "SCAR ABLATED - rhythm steady",
+                    LesionType.Ulcer => "ULCER CLOSED",
+                    LesionType.Polyp => "POLYP REMOVED",
                     _ => "OBJECT REMOVED"
                 };
                 color = new Color(0.5f, 1f, 0.6f);
@@ -621,6 +728,10 @@ namespace AIGame.Gameplay
                     LesionType.Clot => new Color(1f, 0.55f, 0.6f),
                     LesionType.Aneurysm => new Color(1f, 0.5f, 0.85f),
                     LesionType.Blockage => new Color(1f, 0.8f, 0.4f),
+                    LesionType.LeakyValve => new Color(1f, 0.6f, 0.75f),
+                    LesionType.ScarTissue => new Color(0.75f, 0.9f, 1f),
+                    LesionType.Ulcer => new Color(1f, 0.45f, 0.35f),
+                    LesionType.Polyp => new Color(1f, 0.7f, 0.75f),
                     _ => new Color(0.8f, 0.85f, 0.95f)
                 };
             }

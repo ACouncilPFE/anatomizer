@@ -4,6 +4,15 @@
 EditorBuildSettings:
   m_ObjectHideFlags: 0
   serializedVersion: 2
-  m_Scenes: []
+  m_Scenes:
+  - enabled: 1
+    path: Assets/_Project/Scenes/Mission_01_Artery.unity
+    guid: 7f437bdb0ce240a49bcc9e68a8fbc2de
+  - enabled: 1
+    path: Assets/_Project/Scenes/Mission_02_Heart.unity
+    guid: 0db5b0933748af346b5284527baed3c4
+  - enabled: 1
+    path: Assets/_Project/Scenes/Mission_03_Gut.unity
+    guid: a5e6e1899bad0bd4a9100113dbb951a4
   m_configObjects:
     com.unity.xr.openxr.settings4: {fileID: 11400000, guid: 532f52f3f55ce3345aaee321d76628db, type: 2}

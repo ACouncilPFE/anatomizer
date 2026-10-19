@@ -5,8 +5,9 @@ namespace AIGame.Gameplay
 {
     /// <summary>
     /// Dresses the artery so it looks like the inside of a real vessel on angioscopy footage:
-    ///   - a sealed tube (both ends close into domes) with folded, wet-looking lining, built from
-    ///     ArteryPath so the walls you see are the walls the pilot enforces;
+    ///   - the passages of the mission (ArteryLayout: a sealed main artery that forks into two
+    ///     branches), with folded, wet-looking lining, built from the same PassageNetwork the
+    ///     pilot enforces, so the walls you see are the walls you're kept inside;
     ///   - procedural lining texture and normal map (mottled pink-red, dark branching vessels);
     ///   - red blood cells (proper biconcave discs) flowing down the vessel;
     ///   - damage to the wall to repair: tears, plaque and clots (ArteryLesionField);
@@ -90,6 +91,9 @@ namespace AIGame.Gameplay
                 AddEndoscopeLight();
             }
 
+            // Anything that isn't wall shows as deep-red haze rather than sky.
+            UseHazeBackground();
+
             foreach (Light light in FindObjectsOfType<Light>())
             {
                 if (light.type == LightType.Directional)
@@ -99,33 +103,57 @@ namespace AIGame.Gameplay
             }
         }
 
-        /// <summary>Builds the sealed tube mesh, its collider and the lining material.</summary>
+        /// <summary>
+        /// Builds Mission 1's passages (the main artery and its two branches, see ArteryLayout),
+        /// then a wall mesh, collider and lining for each. The main artery's wall goes on this
+        /// object; each branch gets a child object.
+        /// </summary>
         public void BuildWall()
         {
-            // The mesh is in ArteryPath coordinates, so the tunnel must sit at the origin.
+            // Passage meshes are in world coordinates, so the tunnel must sit at the origin.
             transform.position = Vector3.zero;
             transform.rotation = Quaternion.identity;
             transform.localScale = Vector3.one;
 
-            MeshFilter filter = GetOrAdd<MeshFilter>();
-            MeshRenderer meshRenderer = GetOrAdd<MeshRenderer>();
-            filter.sharedMesh = ProceduralMeshes.ArteryWall(ringsPerMeter, sides, false);
-            meshRenderer.sharedMaterial = CreateWallMaterial();
-            meshRenderer.shadowCastingMode = ShadowCastingMode.Off;
+            ArteryLayout.BuildMission1();
+            Material lining = CreateLiningMaterial(textureSize, textureTiling, wetness, Color.white, new Color(0.10f, 0.01f, 0.025f));
 
-            MeshCollider wallCollider = GetOrAdd<MeshCollider>();
-            wallCollider.convex = false;
-            wallCollider.sharedMesh = ProceduralMeshes.ArteryWall(ringsPerMeter * 0.5f, sides / 2, true);
+            for (int i = 0; i < PassageNetwork.All.Count; i++)
+            {
+                Passage passage = PassageNetwork.All[i];
+                GameObject host = gameObject;
+                if (i > 0)
+                {
+                    string childName = "Passage: " + passage.Name;
+                    Transform existing = transform.Find(childName);
+                    host = existing != null ? existing.gameObject : new GameObject(childName);
+                    host.transform.SetParent(transform, false);
+                }
+
+                MeshFilter filter = GetOrAdd<MeshFilter>(host);
+                MeshRenderer meshRenderer = GetOrAdd<MeshRenderer>(host);
+                filter.sharedMesh = PassageMeshes.Wall(passage, ringsPerMeter, sides, false);
+                meshRenderer.sharedMaterial = lining;
+                meshRenderer.shadowCastingMode = ShadowCastingMode.Off;
+
+                MeshCollider wallCollider = GetOrAdd<MeshCollider>(host);
+                wallCollider.convex = false;
+                wallCollider.sharedMesh = PassageMeshes.Wall(passage, ringsPerMeter * 0.5f, sides / 2, true);
+            }
         }
 
-        private Material CreateWallMaterial()
+        /// <summary>
+        /// The wet lining used for vessel and chamber walls: the procedural texture and normal map,
+        /// tinted (white = artery pink-red). emission is a faint glow so far walls aren't pure black.
+        /// </summary>
+        public static Material CreateLiningMaterial(int textureSize, Vector2 textureTiling, float wetness, Color tint, Color emission)
         {
             ProceduralTextures.ArteryWall(textureSize, out Texture2D albedo, out Texture2D normal);
 
-            Material mat = new Material(Shader.Find("Standard")) { name = "ArteryWall_Procedural" };
+            Material mat = new Material(Shader.Find("Standard")) { name = "Lining_Procedural" };
             mat.mainTexture = albedo;
             mat.mainTextureScale = textureTiling;
-            mat.color = Color.white;
+            mat.color = tint;
             mat.SetTexture("_BumpMap", normal);
             mat.SetFloat("_BumpScale", 0.9f);
             mat.EnableKeyword("_NORMALMAP");
@@ -133,7 +161,7 @@ namespace AIGame.Gameplay
             mat.SetFloat("_Glossiness", wetness);
             // A faint inner glow keeps distant walls from going pure black inside the fog.
             mat.EnableKeyword("_EMISSION");
-            mat.SetColor("_EmissionColor", new Color(0.10f, 0.01f, 0.025f));
+            mat.SetColor("_EmissionColor", emission);
             return mat;
         }
 
@@ -155,15 +183,33 @@ namespace AIGame.Gameplay
         /// <summary>Deep-red haze and low ambient light, like looking down a vessel with a scope.</summary>
         public static void ApplyAtmosphere()
         {
-            RenderSettings.ambientMode = AmbientMode.Flat;
-            RenderSettings.ambientLight = new Color(0.22f, 0.05f, 0.07f);
-            RenderSettings.fog = true;
-            RenderSettings.fogColor = new Color(0.30f, 0.03f, 0.07f);
-            RenderSettings.fogMode = FogMode.ExponentialSquared;
-            RenderSettings.fogDensity = 0.016f;
+            ApplyAtmosphere(new Color(0.30f, 0.03f, 0.07f), new Color(0.22f, 0.05f, 0.07f), 0.016f);
         }
 
-        private static void AddEndoscopeLight()
+        public static void ApplyAtmosphere(Color fog, Color ambient, float density)
+        {
+            RenderSettings.ambientMode = AmbientMode.Flat;
+            RenderSettings.ambientLight = ambient;
+            RenderSettings.fog = true;
+            RenderSettings.fogColor = fog;
+            RenderSettings.fogMode = FogMode.ExponentialSquared;
+            RenderSettings.fogDensity = density;
+        }
+
+        /// <summary>Haze-coloured background for every scene camera, so gaps never show sky.</summary>
+        public static void UseHazeBackground()
+        {
+            foreach (Camera cam in FindObjectsOfType<Camera>())
+            {
+                if (cam.targetTexture == null || cam.farClipPlane > 50f)
+                {
+                    cam.clearFlags = CameraClearFlags.SolidColor;
+                    cam.backgroundColor = RenderSettings.fogColor;
+                }
+            }
+        }
+
+        public static void AddEndoscopeLight()
         {
             ShipController ship = FindObjectOfType<ShipController>();
             if (ship == null || ship.transform.Find("Endoscope Light") != null)
@@ -194,10 +240,10 @@ namespace AIGame.Gameplay
             point.shadows = LightShadows.None;
         }
 
-        private T GetOrAdd<T>() where T : Component
+        private static T GetOrAdd<T>(GameObject host) where T : Component
         {
-            T component = GetComponent<T>();
-            return component != null ? component : gameObject.AddComponent<T>();
+            T component = host.GetComponent<T>();
+            return component != null ? component : host.AddComponent<T>();
         }
     }
 }

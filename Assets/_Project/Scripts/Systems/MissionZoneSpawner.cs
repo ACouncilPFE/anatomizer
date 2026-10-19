@@ -138,15 +138,17 @@ namespace AIGame.Systems
                 ship = controller != null ? controller.transform : null;
             }
 
-            float shipZ = ship != null ? ship.position.z : 0f;
-            float z = Mathf.Clamp(shipZ + UnityEngine.Random.Range(spawnDistanceAhead.x, spawnDistanceAhead.y),
-                ArteryPath.MinTravelZ + 2f, ArteryPath.MaxTravelZ - 2f);
+            Vector3 from = ship != null ? ship.position : Vector3.zero;
+            if (!PassageNetwork.Locate(from, out Passage passage, out float shipS, out _, out _))
+            {
+                return from + Vector3.forward * spawnDistanceAhead.x;
+            }
 
-            Vector3 center = ArteryPath.CenterAt(z);
-            Vector2 radii = ArteryPath.RadiiAt(z);
+            float s = Mathf.Clamp(shipS + UnityEngine.Random.Range(spawnDistanceAhead.x, spawnDistanceAhead.y),
+                passage.MinTravel + 2f, passage.MaxTravel - 2f);
             float angle = UnityEngine.Random.Range(0f, Mathf.PI * 2f);
             float radial = Mathf.Sqrt(UnityEngine.Random.value) * maxSpawnRadialFraction;
-            return center + new Vector3(Mathf.Cos(angle) * radii.x * radial, Mathf.Sin(angle) * radii.y * radial, 0f);
+            return passage.PointAt(s, angle, radial);
         }
 
         private EnemyArchetype RollArchetype(List<ZoneArchetypeWeight> weights)

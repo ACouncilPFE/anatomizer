@@ -72,6 +72,14 @@ namespace AIGame.UI
             GUI.DrawTexture(new Rect(x + 3f, y - 1f, 9f, 2f), Texture2D.whiteTexture);
             GUI.DrawTexture(new Rect(x - 1f, y - 12f, 2f, 9f), Texture2D.whiteTexture);
             GUI.DrawTexture(new Rect(x - 1f, y + 3f, 2f, 9f), Texture2D.whiteTexture);
+
+            // The selected beam tool, right by the crosshair, so F never surprises you.
+            SurgicalBeam beam = ship.GetComponent<SurgicalBeam>();
+            if (beam != null)
+            {
+                GUI.color = SurgicalBeam.ToolColor(beam.CurrentTool);
+                GUI.Label(new Rect(x + 14f, y + 6f, 220f, 20f), $"F: {beam.CurrentToolNumber} {SurgicalBeam.ToolName(beam.CurrentTool)}");
+            }
             GUI.color = Color.white;
         }
 
@@ -91,12 +99,120 @@ namespace AIGame.UI
             GUI.Label(new Rect(20, 250, 900, 60), $"Patient blood loss: {blood * 100f:F0}%", _labelStyle);
 
             DrawNearestLesion();
+            DrawHeart(gameMan);
+            DrawGut();
+
+            GUI.color = new Color(1f, 1f, 1f, 0.6f);
+            string missions = "[M] mission menu    ";
+            foreach (var mission in MissionSelector.Missions)
+            {
+                missions += $"[{mission.key}] {mission.title}    ";
+            }
+            GUI.Label(new Rect(20, _virtualHeight - 88, 1800, 30), missions, _hintStyle);
 
             GUI.color = new Color(1f, 1f, 1f, 0.75f);
             GUI.Label(new Rect(20, _virtualHeight - 64, 1800, 30),
                 "Cells - green INFECTED: medicine (right-click).   Spiky purple MALIGNANT: destroy (left-click).", _hintStyle);
             GUI.Label(new Rect(20, _virtualHeight - 40, 1800, 30),
-                "Artery - PLAQUE: laser (left-click).  CLOT: medicine (right-click).  Beam (pick 1-4, hold F): 1 TEAR suture, 2 ANEURYSM stent, 3 BLOCKAGE balloon, 4 FOREIGN OBJECT grabber.", _hintStyle);
+                "[V] cockpit view.   Artery - PLAQUE: laser (left-click).  CLOT: medicine (right-click).  Beam (pick 1-4, hold F): 1 TEAR suture, 2 ANEURYSM stent, 3 BLOCKAGE balloon, 4 FOREIGN OBJECT grabber.", _hintStyle);
+        }
+
+        // Mission 3: stomach acid, shield boost, the pylorus gate and peristalsis warnings.
+        private void DrawGut()
+        {
+            GutEnvironment gut = FindObjectOfType<GutEnvironment>();
+            if (gut == null)
+            {
+                return;
+            }
+
+            ShipSystems systems = FindObjectOfType<ShipSystems>();
+            float x0 = _virtualWidth - 440f;
+            float y = 120f;
+
+            bool boost = systems != null && systems.ShieldBoost;
+            GUI.color = boost ? new Color(0.5f, 0.85f, 1f) : new Color(1f, 1f, 1f, 0.8f);
+            GUI.Label(new Rect(x0, y, 440f, 30f), boost ? "Shield boost [H]: ON (slower)" : "Shield boost [H]: off", _labelStyle);
+
+            if (gut.PylorusGate != null)
+            {
+                GUI.color = gut.PylorusGate.IsOpen ? new Color(0.4f, 1f, 0.5f) : new Color(1f, 0.6f, 0.4f);
+                string pylorus = gut.PylorusGate.IsOpen ? "Pylorus: OPEN - go now" : $"Pylorus: shut - opens in {gut.Motility.PylorusOpensIn:F0}s";
+                GUI.Label(new Rect(x0, y + 34f, 440f, 30f), pylorus, _labelStyle);
+            }
+
+            if (gut.WaveBehindShip)
+            {
+                GUI.color = new Color(1f, 0.85f, 0.4f, 0.6f + 0.4f * Mathf.Sin(Time.time * 12f));
+                GUI.Label(new Rect(x0, y + 68f, 440f, 30f), "PERISTALSIS WAVE behind you", _labelStyle);
+            }
+
+            if (gut.ShipInAcid)
+            {
+                // Tint the whole screen acid-green and warn.
+                GUI.color = new Color(0.6f, 0.8f, 0.1f, 0.18f);
+                GUI.DrawTexture(new Rect(0f, 0f, _virtualWidth, _virtualHeight), Texture2D.whiteTexture);
+                GUI.color = new Color(0.9f, 1f, 0.3f, 0.7f + 0.3f * Mathf.Sin(Time.time * 15f));
+                GUI.Label(new Rect(x0, y + 102f, 440f, 30f), boost ? "IN STOMACH ACID - shields holding" : "IN STOMACH ACID - hull burning! Press H", _labelStyle);
+            }
+        }
+
+        // Mission 2: heart-rhythm trace, valve states, heart strain and surge warnings.
+        private void DrawHeart(GameManager gameMan)
+        {
+            HeartBeat heart = HeartBeat.Instance;
+            if (heart == null)
+            {
+                return;
+            }
+
+            // ECG trace, top right: the last three seconds, scrolling.
+            const float width = 420f;
+            const float height = 90f;
+            float x0 = _virtualWidth - width - 20f;
+            float y0 = 120f;
+            GUI.color = new Color(0f, 0.05f, 0f, 0.75f);
+            GUI.DrawTexture(new Rect(x0 - 4f, y0 - 24f, width + 8f, height + 30f), Texture2D.whiteTexture);
+            GUI.color = heart.Arrhythmic ? new Color(1f, 0.5f, 0.3f) : new Color(0.4f, 1f, 0.5f);
+            float bpm = 60f / Mathf.Max(heart.Interval, 0.1f);
+            GUI.Label(new Rect(x0, y0 - 24f, width, 24f),
+                heart.Arrhythmic ? $"ECG  {bpm:F0} bpm  ARRHYTHMIA - ablate the scar tissue" : $"ECG  {bpm:F0} bpm  steady", _hintStyle);
+
+            const int points = 140;
+            float now = Time.time;
+            for (int i = 0; i < points; i++)
+            {
+                float t = now - 3f + 3f * i / (points - 1);
+                float v = heart.EcgAt(t);
+                float px = x0 + width * i / (points - 1);
+                float py = y0 + height * 0.7f - v * height * 0.55f;
+                GUI.DrawTexture(new Rect(px, py, 3f, 3f), Texture2D.whiteTexture);
+            }
+
+            // Valves.
+            HeartEnvironment env = FindObjectOfType<HeartEnvironment>();
+            if (env != null && env.Tricuspid != null && env.Pulmonary != null)
+            {
+                DrawValve(env.Tricuspid, x0, y0 + height + 12f);
+                DrawValve(env.Pulmonary, x0 + width * 0.5f, y0 + height + 12f);
+
+                if (env.PressureSurgeAtShip())
+                {
+                    GUI.color = new Color(1f, 0.3f, 0.2f, 0.6f + 0.4f * Mathf.Sin(now * 20f));
+                    GUI.Label(new Rect(x0, y0 + height + 40f, width, 30f), "PRESSURE SURGE - hold on", _labelStyle);
+                }
+            }
+
+            // Heart strain.
+            float strain = gameMan.Strain01;
+            GUI.color = strain > 0.6f ? Color.red : strain > 0.3f ? Color.yellow : new Color(1f, 0.75f, 0.85f);
+            GUI.Label(new Rect(20, 370, 900, 60), $"Heart strain: {strain * 100f:F0}%", _labelStyle);
+        }
+
+        private void DrawValve(HeartValve valve, float x, float y)
+        {
+            GUI.color = valve.IsOpen ? new Color(0.4f, 1f, 0.5f) : new Color(1f, 0.45f, 0.4f);
+            GUI.Label(new Rect(x, y, 220f, 26f), $"{valve.DisplayName}: {(valve.IsOpen ? "OPEN" : "SHUT")}", _hintStyle);
         }
 
         // Points you at the closest wall damage still to be fixed.
@@ -127,7 +243,7 @@ namespace AIGame.UI
                 return;
             }
 
-            float along = nearest.transform.position.z - ship.transform.position.z;
+            float along = Vector3.Dot(nearest.transform.position - ship.transform.position, ship.transform.forward);
             string where = Mathf.Abs(along) < 3f ? "right here" : along > 0f ? $"{along:F0} m ahead" : $"{-along:F0} m behind";
             GUI.color = nearest.Type == LesionType.Tear ? new Color(1f, 0.45f, 0.4f) : new Color(1f, 0.85f, 0.55f);
             GUI.Label(new Rect(20, 290, 900, 60),
@@ -140,9 +256,9 @@ namespace AIGame.UI
                 string state = !beam.IsActive ? "hold F to use"
                     : beam.Target == null ? "point the nose at a problem (within 22 m)"
                     : beam.Target.RequiredTool == beam.CurrentTool ? "working on " + beam.Target.Title.ToLower() + "..."
-                    : "wrong tool for " + beam.Target.Title.ToLower() + " - " + beam.Target.ToolHint;
+                    : $"WRONG TOOL for {beam.Target.Title.ToLower()} - {beam.Target.ToolHint}";
                 GUI.color = SurgicalBeam.ToolColor(beam.CurrentTool);
-                GUI.Label(new Rect(20, 330, 1100, 60), $"Surgical beam [1-4]: {tool} - {state}", _labelStyle);
+                GUI.Label(new Rect(20, 330, 1100, 60), $"Beam tool: {tool} (press 1-4 to change) - {state}", _labelStyle);
             }
         }
 
@@ -186,11 +302,17 @@ namespace AIGame.UI
             bool won = gameMan.CurrentState == GameState.Success;
             GUI.color = won ? new Color(0.5f, 1f, 0.5f) : new Color(1f, 0.4f, 0.4f);
             string text = won
-                ? "MISSION COMPLETE - the artery is clear"
+                ? (HeartBeat.Instance != null ? "MISSION COMPLETE - the heart is beating strong"
+                    : FindObjectOfType<GutEnvironment>() != null ? "MISSION COMPLETE - the gut is healthy"
+                    : "MISSION COMPLETE - the artery is clear")
                 : gameMan.HealthyCellsLost >= gameMan.MaxHealthyCellsLost
                     ? "MISSION FAILED - too many curable cells destroyed"
                     : gameMan.BloodLoss01 >= 1f
                         ? "MISSION FAILED - the patient lost too much blood"
+                    : gameMan.Strain01 >= 1f
+                        ? "MISSION FAILED - the heart gave out"
+                    : FindObjectOfType<GutEnvironment>() != null
+                        ? "MISSION FAILED - the hull gave way"
                         : "MISSION FAILED";
             GUI.Label(new Rect(0, _virtualHeight * 0.4f, _virtualWidth, 80), text, _bannerStyle);
         }

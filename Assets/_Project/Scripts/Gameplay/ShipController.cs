@@ -40,13 +40,11 @@ namespace AIGame.Gameplay
         [Header("Tube Assist")]
         [SerializeField] private float tubeAssistStart    = 0.65f; // start pushing inward at 65% radius
         [SerializeField] private float tubeAssistStrength = 28f;  // stronger push back to center
-        [SerializeField] private float tubeLength         = 150f;
-        [SerializeField] private float tubeRadiusX        = 6.5f;
-        [SerializeField] private float tubeRadiusY        = 4f;
 
         // ─── Private state ────────────────────────────────────────────────────────
         private Rigidbody rb;
         private ShipPilot pilot;   // optional crew member; fills in input on autopilot
+        private ShipSystems systems;
 
         // Inputs buffered from Update → used in FixedUpdate
         private float inputForward;
@@ -74,6 +72,7 @@ namespace AIGame.Gameplay
         private void Awake()
         {
             rb = GetComponent<Rigidbody>();
+            systems = GetComponent<ShipSystems>();
             rb.useGravity    = false;
             rb.drag          = 0f;   // We manage deceleration manually via velocity lerp
             rb.angularDrag   = 0f;   // We manage rotation deceleration via angularVelocity lerp
@@ -118,7 +117,9 @@ namespace AIGame.Gameplay
         // cleanly when input is released.
         private void ApplyTranslation()
         {
-            float fwd  = inputForward  * thrust         * inputBoost;
+            // Power routed away from propulsion (shield boost) slows the ship.
+            float power = systems != null ? Mathf.Lerp(0.6f, 1f, Mathf.Clamp01(systems.PropulsionPower * 2f)) : 1f;
+            float fwd  = inputForward  * thrust         * inputBoost * power;
             float side = inputStrafe   * strafeThrust;
             float up   = inputRise     * verticalThrust;
 
@@ -174,24 +175,22 @@ namespace AIGame.Gameplay
 
         // ─── Tube assist ─────────────────────────────────────────────────────────
         // Gently pushes the ship back toward the tube centerline when it drifts past
-        // tubeAssistStart fraction of the tube radius. The centreline comes from ArteryPath, the
-        // same shape the tunnel mesh is built from. ShipPilot does the hard containment.
+        // tubeAssistStart fraction of the passage radius. Uses the PassageNetwork, the same shapes
+        // the walls are built from. ShipPilot does the hard containment.
         private void ApplyTubeAssist()
         {
-            float z        = Mathf.Clamp(transform.position.z, 0f, tubeLength);
-            Vector3 center = ArteryPath.CenterAt(z);
-
-            Vector3 offset = transform.position - new Vector3(center.x, center.y, transform.position.z);
-            float normX    = offset.x / Mathf.Max(tubeRadiusX, 0.01f);
-            float normY    = offset.y / Mathf.Max(tubeRadiusY, 0.01f);
-            float radial   = Mathf.Sqrt(normX * normX + normY * normY);
-
-            if (radial > tubeAssistStart)
+            if (!PassageNetwork.Locate(transform.position, out Passage passage, out float s, out _, out float radial))
             {
-                float t             = Mathf.InverseLerp(tubeAssistStart, 1.1f, radial);
-                Vector3 toCenter    = new Vector3(-offset.x, -offset.y, 0f).normalized;
+                return;
+            }
+
+            if (radial > tubeAssistStart && radial < 5f)
+            {
+                passage.Frame(s, out Vector3 center, out Vector3 tangent, out _, out _);
+                Vector3 toCenter = Vector3.ProjectOnPlane(center - transform.position, tangent).normalized;
+                float t = Mathf.InverseLerp(tubeAssistStart, 1.1f, radial);
                 // Add directly to velocity so it's not masked by drag (drag is 0)
-                rb.velocity        += toCenter * (tubeAssistStrength * t * Time.fixedDeltaTime);
+                rb.velocity += toCenter * (tubeAssistStrength * t * Time.fixedDeltaTime);
             }
         }
     }

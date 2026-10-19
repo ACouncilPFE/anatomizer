@@ -63,6 +63,8 @@ namespace AIGame.Gameplay
             Projectile shot = Instantiate(ProjectilePrefab, firePoint.position, firePoint.rotation);
             shot.Configure(effect);
             shot.gameObject.SetActive(true); // the runtime template is kept inactive
+            GameAudio.Play(effect == ProjectileEffect.Repair ? ProceduralAudio.Medicine : ProceduralAudio.Laser,
+                0.5f, Random.Range(0.95f, 1.05f), 0f);
             nextFireTime = Time.time + 1f / fireRate;
         }
     }

@@ -24,8 +24,8 @@ namespace AIGame.Gameplay
             Vector3 position = Vector3.SmoothDamp(transform.position, desiredPosition, ref _velocity, positionSmoothTime);
             if (keepInsideArtery)
             {
-                // The camera trails the ship, so let it sit a little further back into the end cap.
-                ArteryPath.ClampInside(ref position, 0.9f, 0.3f, ArteryPath.StartZ + 2f, ArteryPath.EndZ - 2f, out _);
+                // The camera trails the ship, so let it sit a little further back into an end cap.
+                PassageNetwork.ClampInside(ref position, 0.9f, 0.3f, out _, 6f);
             }
             transform.position = position;
 

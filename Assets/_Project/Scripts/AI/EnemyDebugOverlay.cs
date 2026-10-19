@@ -36,6 +36,8 @@ namespace AIGame.AI
         // (medicine needed for infected cells, health left for malignant ones).
         private void OnGUI()
         {
+            // Follow whichever camera is main right now (chase camera or the cockpit pilot view).
+            mainCamera = Camera.main;
             if (!showOverlay || agent == null || mainCamera == null || !agent.IsHostile)
             {
                 return;
