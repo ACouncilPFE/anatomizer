@@ -23,6 +23,7 @@ namespace AIGame.Gameplay
         private static Material stentMaterial;
         private static Material balloonMaterial;
         private static Material scarTissueMaterial;
+        private static Material polypMaterial;
 
         /// <summary>Lumpy, fatty mound (unit size; scale it to taste).</summary>
         public static Mesh Plaque => plaque ??= ProceduralMeshes.DisplacedSphere("Plaque", 28, 20, d =>
@@ -52,6 +53,8 @@ namespace AIGame.Gameplay
         public static Material StitchMaterial   => stitchMaterial   ??= Make("Stitch",   new Color(0.15f, 0.25f, 0.6f),  0.5f, new Color(0.1f, 0.2f, 0.5f));
         public static Material AneurysmMaterial => aneurysmMaterial ??= Make("Aneurysm", new Color(0.62f, 0.20f, 0.36f), 0.85f, new Color(0.12f, 0.01f, 0.04f));
         public static Material BalloonMaterial  => balloonMaterial  ??= Make("Balloon",  new Color(0.65f, 0.82f, 1f),    0.95f, new Color(0.08f, 0.12f, 0.2f));
+        /// <summary>Glossy, lumpy pink growth.</summary>
+        public static Material PolypMaterial => polypMaterial ??= Make("Polyp", new Color(0.92f, 0.55f, 0.6f), 0.7f, new Color(0.08f, 0.02f, 0.03f));
         /// <summary>Pale, tough, fibrous scar in the heart muscle.</summary>
         public static Material ScarTissueMaterial => scarTissueMaterial ??= Make("ScarTissue", new Color(0.88f, 0.8f, 0.78f), 0.35f, new Color(0.05f, 0.06f, 0.08f));
 

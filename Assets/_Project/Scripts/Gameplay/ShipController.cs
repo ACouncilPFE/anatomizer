@@ -44,6 +44,7 @@ namespace AIGame.Gameplay
         // ─── Private state ────────────────────────────────────────────────────────
         private Rigidbody rb;
         private ShipPilot pilot;   // optional crew member; fills in input on autopilot
+        private ShipSystems systems;
 
         // Inputs buffered from Update → used in FixedUpdate
         private float inputForward;
@@ -71,6 +72,7 @@ namespace AIGame.Gameplay
         private void Awake()
         {
             rb = GetComponent<Rigidbody>();
+            systems = GetComponent<ShipSystems>();
             rb.useGravity    = false;
             rb.drag          = 0f;   // We manage deceleration manually via velocity lerp
             rb.angularDrag   = 0f;   // We manage rotation deceleration via angularVelocity lerp
@@ -115,7 +117,9 @@ namespace AIGame.Gameplay
         // cleanly when input is released.
         private void ApplyTranslation()
         {
-            float fwd  = inputForward  * thrust         * inputBoost;
+            // Power routed away from propulsion (shield boost) slows the ship.
+            float power = systems != null ? Mathf.Lerp(0.6f, 1f, Mathf.Clamp01(systems.PropulsionPower * 2f)) : 1f;
+            float fwd  = inputForward  * thrust         * inputBoost * power;
             float side = inputStrafe   * strafeThrust;
             float up   = inputRise     * verticalThrust;
 

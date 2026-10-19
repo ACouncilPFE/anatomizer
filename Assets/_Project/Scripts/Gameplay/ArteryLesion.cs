@@ -22,7 +22,11 @@ namespace AIGame.Gameplay
         /// <summary>Heart: a torn valve leaflet that lets blood leak backwards; sutured shut.</summary>
         LeakyValve,
         /// <summary>Heart: a scar in the muscle wall that makes the rhythm irregular; lasered away (ablation).</summary>
-        ScarTissue
+        ScarTissue,
+        /// <summary>Gut: a raw, bleeding sore in the stomach lining; sutured shut.</summary>
+        Ulcer,
+        /// <summary>Gut: a mushroom-shaped growth on the intestine wall; lasered off.</summary>
+        Polyp
     }
 
     /// <summary>Everything the ship can treat with: two guns and the four surgical-beam tools.</summary>
@@ -47,6 +51,8 @@ namespace AIGame.Gameplay
     ///   ForeignObject  grabber beam
     ///   LeakyValve     suture beam   - heart: strains the heart until closed
     ///   ScarTissue     laser         - heart: makes the heartbeat irregular until ablated
+    ///   Ulcer          suture beam   - gut: bleeds like a tear
+    ///   Polyp          laser         - gut
     ///
     /// ArteryLesionField places them. Wall lesions sit on the wall facing the vessel's centre;
     /// a blockage sits on the centreline, since it rings the whole vessel.
@@ -108,6 +114,8 @@ namespace AIGame.Gameplay
             LesionType.Blockage => SurgicalTool.Balloon,
             LesionType.LeakyValve => SurgicalTool.Suture,
             LesionType.ScarTissue => SurgicalTool.Laser,
+            LesionType.Ulcer => SurgicalTool.Suture,
+            LesionType.Polyp => SurgicalTool.Laser,
             _ => SurgicalTool.Grabber
         };
 
@@ -120,6 +128,8 @@ namespace AIGame.Gameplay
             LesionType.Blockage => "BLOCKAGE",
             LesionType.LeakyValve => "TORN VALVE LEAFLET",
             LesionType.ScarTissue => "SCAR TISSUE (irregular heartbeat)",
+            LesionType.Ulcer => "BLEEDING ULCER",
+            LesionType.Polyp => "POLYP",
             _ => "FOREIGN OBJECT"
         };
 
@@ -246,6 +256,7 @@ namespace AIGame.Gameplay
                 switch (type)
                 {
                     case LesionType.Tear:
+                    case LesionType.Ulcer:
                         GameManager.Instance?.AddBloodLoss(bleedPerSecond * (1f - Progress01) * dt);
                         if (glow != null)
                         {
@@ -302,6 +313,7 @@ namespace AIGame.Gameplay
                     case LesionType.Plaque:
                     case LesionType.Clot:
                     case LesionType.ScarTissue:
+                    case LesionType.Polyp:
                     case LesionType.ForeignObject:
                         if (body != null && body.gameObject.activeSelf)
                         {
@@ -373,6 +385,15 @@ namespace AIGame.Gameplay
                         bleed = null;
                     }
                     glow.color = new Color(1f, 0.5f, 0.6f);
+                    break;
+                case LesionType.Ulcer:
+                    BuildTear();
+                    rim.localScale = new Vector3(1.6f, 0.75f, 1f); // a round crater rather than a slit
+                    body.localScale = new Vector3(1.5f, 0.7f, 1f);
+                    bodyScale = body.localScale;
+                    break;
+                case LesionType.Polyp:
+                    BuildPolyp();
                     break;
                 case LesionType.ScarTissue:
                     Hitbox(1.3f);
@@ -490,6 +511,22 @@ namespace AIGame.Gameplay
             balloon.localScale = Vector3.zero;
         }
 
+        // A polyp: a fleshy cap on a short stalk, growing out of the wall.
+        private void BuildPolyp()
+        {
+            Hitbox(1.2f);
+            body = new GameObject("Polyp").transform;
+            body.SetParent(transform, false);
+            Transform stalk = Part("Stalk", LesionMeshes.Sphere, LesionMeshes.PolypMaterial, new Vector3(0f, 0f, 0.5f));
+            stalk.SetParent(body, false);
+            stalk.localScale = new Vector3(0.45f, 0.45f, 1.2f);
+            Transform cap = Part("Cap", LesionMeshes.Plaque, LesionMeshes.PolypMaterial, new Vector3(0f, 0f, 1.15f));
+            cap.SetParent(body, false);
+            cap.localScale = new Vector3(1.5f, 1.4f, 1.1f);
+            body.localScale = Vector3.one * Random.Range(0.9f, 1.2f);
+            bodyScale = body.localScale;
+        }
+
         private void BuildForeignObject()
         {
             Hitbox(1f);
@@ -555,6 +592,7 @@ namespace AIGame.Gameplay
             {
                 case LesionType.Tear:
                 case LesionType.LeakyValve:
+                case LesionType.Ulcer:
                     // The gash narrows as it is pulled shut and stitches appear along it.
                     body.localScale = new Vector3(bodyScale.x * (1f - t), bodyScale.y, bodyScale.z);
                     rim.localScale = new Vector3(Mathf.Lerp(1f, 0.25f, t), 1f, 1f);
@@ -592,7 +630,8 @@ namespace AIGame.Gameplay
                 case LesionType.Plaque:
                 case LesionType.Clot:
                 case LesionType.ScarTissue:
-                    // Plaque breaks down / the clot dissolves / the scar is ablated.
+                case LesionType.Polyp:
+                    // Plaque breaks down / the clot dissolves / the scar or polyp is burned away.
                     body.localScale = bodyScale * Mathf.Lerp(1f, 0.3f, t);
                     break;
             }
@@ -664,6 +703,8 @@ namespace AIGame.Gameplay
                     LesionType.Blockage => "ARTERY REOPENED",
                     LesionType.LeakyValve => "VALVE REPAIRED",
                     LesionType.ScarTissue => "SCAR ABLATED - rhythm steady",
+                    LesionType.Ulcer => "ULCER CLOSED",
+                    LesionType.Polyp => "POLYP REMOVED",
                     _ => "OBJECT REMOVED"
                 };
                 color = new Color(0.5f, 1f, 0.6f);
@@ -689,6 +730,8 @@ namespace AIGame.Gameplay
                     LesionType.Blockage => new Color(1f, 0.8f, 0.4f),
                     LesionType.LeakyValve => new Color(1f, 0.6f, 0.75f),
                     LesionType.ScarTissue => new Color(0.75f, 0.9f, 1f),
+                    LesionType.Ulcer => new Color(1f, 0.45f, 0.35f),
+                    LesionType.Polyp => new Color(1f, 0.7f, 0.75f),
                     _ => new Color(0.8f, 0.85f, 0.95f)
                 };
             }

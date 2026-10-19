@@ -9,24 +9,33 @@ using UnityEngine.SceneManagement;
 namespace AIGame.Editor
 {
     /// <summary>
-    /// Builds the Mission 2 scene (the heart): the ship in the vena cava, the usual camera,
-    /// HUD and game manager, and a HeartEnvironment that builds the heart at load. Also puts both
-    /// mission scenes in the build settings so F1 / F2 can switch between them.
-    /// Uses the prefabs and spawn profile made by AIGame > Build Prototype Scene.
+    /// Builds the mission scenes that create their environment at load: Mission 2 (the heart) and
+    /// Mission 3 (the gut). Each gets the ship at the start of its first passage, the usual camera,
+    /// HUD, game manager and spawner, plus its environment object. Also lists every mission scene
+    /// in the build settings so F1-F3 can switch between them. Uses the prefabs and spawn profile
+    /// made by AIGame > Build Prototype Scene.
     /// </summary>
     public static class HeartSceneBuilder
     {
-        public const string ScenePath = "Assets/_Project/Scenes/Mission_02_Heart.unity";
         public const string ArteryScenePath = "Assets/_Project/Scenes/Mission_01_Artery.unity";
+        public const string ScenePath = "Assets/_Project/Scenes/Mission_02_Heart.unity";
+        public const string GutScenePath = "Assets/_Project/Scenes/Mission_03_Gut.unity";
 
         [MenuItem("AIGame/Build Heart Scene (Mission 2)")]
         public static void BuildFromMenu()
         {
-            if (EditorUtility.DisplayDialog("Build Heart Scene",
-                    "This will create (or replace) the Mission 2 scene at:\n" + ScenePath + "\n\nProceed?", "Build", "Cancel"))
+            if (Confirm(ScenePath))
             {
                 Build();
-                EditorUtility.DisplayDialog("Done", "Mission 2 scene created at:\n" + ScenePath, "OK");
+            }
+        }
+
+        [MenuItem("AIGame/Build Gut Scene (Mission 3)")]
+        public static void BuildGutFromMenu()
+        {
+            if (Confirm(GutScenePath))
+            {
+                BuildGut();
             }
         }
 
@@ -37,7 +46,40 @@ namespace AIGame.Editor
             EditorApplication.Exit(0);
         }
 
+        /// <summary>For batch mode: -executeMethod AIGame.Editor.HeartSceneBuilder.BuildGutForBatch</summary>
+        public static void BuildGutForBatch()
+        {
+            BuildGut();
+            EditorApplication.Exit(0);
+        }
+
         public static void Build()
+        {
+            BuildMission(ScenePath, 8, 1500f, root =>
+            {
+                root.name = "Heart";
+                root.AddComponent<HeartBeat>();
+                root.AddComponent<HeartEnvironment>();
+            });
+        }
+
+        public static void BuildGut()
+        {
+            BuildMission(GutScenePath, 8, 1500f, root =>
+            {
+                root.name = "Gut";
+                root.AddComponent<GutMotility>();
+                root.AddComponent<GutEnvironment>();
+            });
+        }
+
+        private static bool Confirm(string path)
+        {
+            return EditorUtility.DisplayDialog("Build Mission Scene",
+                "This will create (or replace) the scene at:\n" + path + "\n\nProceed?", "Build", "Cancel");
+        }
+
+        private static void BuildMission(string path, int requiredTreatments, float duration, System.Action<GameObject> addEnvironment)
         {
             Scene scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
 
@@ -52,8 +94,8 @@ namespace AIGame.Editor
             PrototypeSceneBuilder.CreateGameManager();
             GameManager gm = Object.FindObjectOfType<GameManager>();
             SerializedObject gmSO = new SerializedObject(gm);
-            gmSO.FindProperty("requiredTreatments").intValue = 8; // 5 heart problems + 3 cells
-            gmSO.FindProperty("missionDurationSeconds").floatValue = 1500f;
+            gmSO.FindProperty("requiredTreatments").intValue = requiredTreatments;
+            gmSO.FindProperty("missionDurationSeconds").floatValue = duration;
             gmSO.ApplyModifiedPropertiesWithoutUndo();
 
             GameObject spawnerObj = PrototypeSceneBuilder.CreateSpawner(ship);
@@ -61,9 +103,7 @@ namespace AIGame.Editor
             PrototypeSceneBuilder.CreateHUD();
             PrototypeSceneBuilder.CreateObjectiveManager();
 
-            GameObject heart = new GameObject("Heart");
-            heart.AddComponent<HeartBeat>();
-            heart.AddComponent<HeartEnvironment>();
+            addEnvironment(new GameObject("Environment"));
 
             Projectile projectile = AssetDatabase.LoadAssetAtPath<Projectile>("Assets/_Project/Prefabs/Projectile.prefab");
             if (projectile != null)
@@ -74,9 +114,9 @@ namespace AIGame.Editor
             }
 
             System.IO.Directory.CreateDirectory("Assets/_Project/Scenes");
-            EditorSceneManager.SaveScene(scene, ScenePath);
+            EditorSceneManager.SaveScene(scene, path);
             AddMissionsToBuildSettings();
-            Debug.Log("[HeartSceneBuilder] Mission 2 scene saved to " + ScenePath);
+            Debug.Log("[HeartSceneBuilder] Mission scene saved to " + path);
         }
 
         private static void WireSpawner(GameObject spawnerObj)
@@ -105,11 +145,15 @@ namespace AIGame.Editor
 
         public static void AddMissionsToBuildSettings()
         {
-            EditorBuildSettings.scenes = new[]
+            System.Collections.Generic.List<EditorBuildSettingsScene> scenes = new System.Collections.Generic.List<EditorBuildSettingsScene>();
+            foreach (string p in new[] { ArteryScenePath, ScenePath, GutScenePath })
             {
-                new EditorBuildSettingsScene(ArteryScenePath, true),
-                new EditorBuildSettingsScene(ScenePath, true),
-            };
+                if (System.IO.File.Exists(p))
+                {
+                    scenes.Add(new EditorBuildSettingsScene(p, true));
+                }
+            }
+            EditorBuildSettings.scenes = scenes.ToArray();
         }
     }
 }

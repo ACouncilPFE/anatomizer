@@ -16,7 +16,8 @@ namespace AIGame.Gameplay
         public enum Kind
         {
             Tricuspid,
-            Pulmonary
+            Pulmonary,
+            Pylorus
         }
 
         private const int Leaflets = 3;
@@ -33,10 +34,18 @@ namespace AIGame.Gameplay
         private Vector3[][] vertexBuffers;
         private Rigidbody ship;
         private ArteryLesion tear;
+        private System.Func<bool> openWhen;
 
         public Kind ValveKind => kind;
         public bool IsOpen => openness > 0.6f;
-        public string DisplayName => kind == Kind.Tricuspid ? "Tricuspid valve" : "Pulmonary valve";
+        public string DisplayName => kind == Kind.Tricuspid ? "Tricuspid valve" : kind == Kind.Pulmonary ? "Pulmonary valve" : "Pylorus";
+
+        /// <summary>A gate timed by something other than the heartbeat (the pylorus, by the gut).</summary>
+        public void Configure(Kind valveKind, Passage onPassage, float atS, System.Func<bool> isOpen)
+        {
+            openWhen = isOpen;
+            Configure(valveKind, onPassage, atS);
+        }
 
         public void Configure(Kind valveKind, Passage onPassage, float atS)
         {
@@ -53,6 +62,10 @@ namespace AIGame.Gameplay
 
         private bool ShouldBeOpen()
         {
+            if (openWhen != null)
+            {
+                return openWhen();
+            }
             HeartBeat heart = HeartBeat.Instance;
             if (heart == null)
             {

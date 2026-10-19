@@ -39,6 +39,7 @@ namespace AIGame.Gameplay
             public bool  CycleBeamTool;  // held state; SurgicalBeam acts on the press
             public int   BeamToolSelect; // 1-4 when a number key is pressed this frame, else 0
             public bool  ToggleCockpitView; // held state; CockpitView acts on the press
+            public bool  ToggleShieldBoost; // held state; ShipSystems acts on the press
             public bool  TogglePilot;    // held state; ShipPilot acts on the press
             public bool  ToggleCoPilot;  // held state; ShipCoPilot acts on the press
         }
@@ -74,6 +75,7 @@ namespace AIGame.Gameplay
                 FireMedicine  = Input.GetMouseButton(1),
                 Beam          = Input.GetKey(KeyCode.F),
                 ToggleCockpitView = Input.GetKey(KeyCode.V),
+                ToggleShieldBoost = Input.GetKey(KeyCode.H),
                 // Number row or keypad.
                 BeamToolSelect = Pressed(KeyCode.Alpha1, KeyCode.Keypad1) ? 1 : Pressed(KeyCode.Alpha2, KeyCode.Keypad2) ? 2
                                : Pressed(KeyCode.Alpha3, KeyCode.Keypad3) ? 3 : Pressed(KeyCode.Alpha4, KeyCode.Keypad4) ? 4 : 0,

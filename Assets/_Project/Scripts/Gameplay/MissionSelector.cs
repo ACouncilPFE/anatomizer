@@ -5,7 +5,7 @@ namespace AIGame.Gameplay
 {
     /// <summary>
     /// Switches between missions until the body map exists: F1 (or Ctrl+1) for Mission 1 (the
-    /// artery), F2 (or Ctrl+2) for Mission 2 (the heart). Ctrl+number is there because many laptops
+    /// artery), F2 (or Ctrl+2) for Mission 2 (the heart), F3 (or Ctrl+3) for Mission 3 (the gut). Ctrl+number is there because many laptops
     /// need Fn held for the F keys. Each mission is its own scene, listed in the build settings.
     /// </summary>
     public static class MissionSelector
@@ -14,6 +14,7 @@ namespace AIGame.Gameplay
         {
             (KeyCode.F1, KeyCode.Alpha1, "Mission_01_Artery", "Mission 1: Arterial Descent"),
             (KeyCode.F2, KeyCode.Alpha2, "Mission_02_Heart", "Mission 2: Cardiac Maelstrom"),
+            (KeyCode.F3, KeyCode.Alpha3, "Mission_03_Gut", "Mission 3: Gut Run"),
         };
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]

@@ -38,6 +38,36 @@ namespace AIGame.Gameplay
             Relief = (angle, s) => 1f + 0.015f * Mathf.Sin(angle * 6f + s * 0.1f) + 0.01f * Mathf.Sin(s * 0.7f),
         };
 
+        /// <summary>Oesophagus: a muscular tube with soft lengthwise folds and faint rings.</summary>
+        public static readonly PassageProfile Esophagus = new PassageProfile
+        {
+            Name = "Oesophagus",
+            MetresPerTile = 20f,
+            Relief = (angle, s) => 1f
+                - 0.07f * Mathf.Pow(Mathf.Abs(Mathf.Sin(angle * 4f + s * 0.05f)), 3f)
+                + 0.02f * Mathf.Sin(s * 1.1f),
+        };
+
+        /// <summary>Stomach: deep, winding folds of lining (rugae).</summary>
+        public static readonly PassageProfile Stomach = new PassageProfile
+        {
+            Name = "Stomach",
+            MetresPerTile = 26f,
+            Relief = (angle, s) => 1f
+                - 0.09f * Mathf.Pow(Mathf.Abs(Mathf.Sin(angle * 11f + Mathf.Sin(s * 0.25f) * 1.6f)), 2f)
+                + 0.03f * Mathf.Sin(angle * 3f - s * 0.3f),
+        };
+
+        /// <summary>Small intestine: ring folds (plicae) all along it, covered in tiny villi bumps.</summary>
+        public static readonly PassageProfile Intestine = new PassageProfile
+        {
+            Name = "Small intestine",
+            MetresPerTile = 14f,
+            Relief = (angle, s) => 1f
+                - 0.12f * Mathf.Pow(Mathf.Abs(Mathf.Sin(s * 1.4f + Mathf.Sin(angle * 2f) * 0.6f)), 6f)
+                + 0.025f * Mathf.Sin(angle * 40f) * Mathf.Sin(s * 9f),
+        };
+
         /// <summary>Arteries: soft folds running along the vessel that twist slowly, and faint rings.</summary>
         public static readonly PassageProfile Artery = new PassageProfile
         {

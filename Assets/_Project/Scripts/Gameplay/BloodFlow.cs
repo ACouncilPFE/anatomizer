@@ -54,6 +54,16 @@ namespace AIGame.Gameplay
             count = cellCount;
         }
 
+        private Mesh customMesh;
+        private float customScale = 1f;
+
+        /// <summary>Float something other than red blood cells (e.g. food particles in the gut), at a size multiplier.</summary>
+        public void UseMesh(Mesh mesh, float scale = 1f)
+        {
+            customMesh = mesh;
+            customScale = scale;
+        }
+
         /// <summary>Blood returning from the body (in veins and the right heart) is darker.</summary>
         public void Configure(int cellCount, Color color)
         {
@@ -63,7 +73,7 @@ namespace AIGame.Gameplay
 
         private void Start()
         {
-            Mesh mesh = ProceduralMeshes.BiconcaveDisc(cellRadius);
+            Mesh mesh = customMesh != null ? customMesh : ProceduralMeshes.BiconcaveDisc(cellRadius);
             Material mat = new Material(Shader.Find("Standard")) { name = "RedBloodCell" };
             mat.color = cellColor;
             mat.SetFloat("_Glossiness", 0.55f);
@@ -106,7 +116,7 @@ namespace AIGame.Gameplay
                 r.shadowCastingMode = ShadowCastingMode.Off;
                 r.receiveShadows = false;
 
-                float scale = Random.Range(0.85f, 1.15f);
+                float scale = Random.Range(0.85f, 1.15f) * customScale;
                 go.transform.localScale = Vector3.one * scale;
 
                 cells[i] = new Cell

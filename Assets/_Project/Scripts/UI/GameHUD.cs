@@ -100,6 +100,7 @@ namespace AIGame.UI
 
             DrawNearestLesion();
             DrawHeart(gameMan);
+            DrawGut();
 
             GUI.color = new Color(1f, 1f, 1f, 0.6f);
             string missions = "";
@@ -114,6 +115,46 @@ namespace AIGame.UI
                 "Cells - green INFECTED: medicine (right-click).   Spiky purple MALIGNANT: destroy (left-click).", _hintStyle);
             GUI.Label(new Rect(20, _virtualHeight - 40, 1800, 30),
                 "[V] cockpit view.   Artery - PLAQUE: laser (left-click).  CLOT: medicine (right-click).  Beam (pick 1-4, hold F): 1 TEAR suture, 2 ANEURYSM stent, 3 BLOCKAGE balloon, 4 FOREIGN OBJECT grabber.", _hintStyle);
+        }
+
+        // Mission 3: stomach acid, shield boost, the pylorus gate and peristalsis warnings.
+        private void DrawGut()
+        {
+            GutEnvironment gut = FindObjectOfType<GutEnvironment>();
+            if (gut == null)
+            {
+                return;
+            }
+
+            ShipSystems systems = FindObjectOfType<ShipSystems>();
+            float x0 = _virtualWidth - 440f;
+            float y = 120f;
+
+            bool boost = systems != null && systems.ShieldBoost;
+            GUI.color = boost ? new Color(0.5f, 0.85f, 1f) : new Color(1f, 1f, 1f, 0.8f);
+            GUI.Label(new Rect(x0, y, 440f, 30f), boost ? "Shield boost [H]: ON (slower)" : "Shield boost [H]: off", _labelStyle);
+
+            if (gut.PylorusGate != null)
+            {
+                GUI.color = gut.PylorusGate.IsOpen ? new Color(0.4f, 1f, 0.5f) : new Color(1f, 0.6f, 0.4f);
+                string pylorus = gut.PylorusGate.IsOpen ? "Pylorus: OPEN - go now" : $"Pylorus: shut - opens in {gut.Motility.PylorusOpensIn:F0}s";
+                GUI.Label(new Rect(x0, y + 34f, 440f, 30f), pylorus, _labelStyle);
+            }
+
+            if (gut.WaveBehindShip)
+            {
+                GUI.color = new Color(1f, 0.85f, 0.4f, 0.6f + 0.4f * Mathf.Sin(Time.time * 12f));
+                GUI.Label(new Rect(x0, y + 68f, 440f, 30f), "PERISTALSIS WAVE behind you", _labelStyle);
+            }
+
+            if (gut.ShipInAcid)
+            {
+                // Tint the whole screen acid-green and warn.
+                GUI.color = new Color(0.6f, 0.8f, 0.1f, 0.18f);
+                GUI.DrawTexture(new Rect(0f, 0f, _virtualWidth, _virtualHeight), Texture2D.whiteTexture);
+                GUI.color = new Color(0.9f, 1f, 0.3f, 0.7f + 0.3f * Mathf.Sin(Time.time * 15f));
+                GUI.Label(new Rect(x0, y + 102f, 440f, 30f), boost ? "IN STOMACH ACID - shields holding" : "IN STOMACH ACID - hull burning! Press H", _labelStyle);
+            }
         }
 
         // Mission 2: heart-rhythm trace, valve states, heart strain and surge warnings.
@@ -261,13 +302,17 @@ namespace AIGame.UI
             bool won = gameMan.CurrentState == GameState.Success;
             GUI.color = won ? new Color(0.5f, 1f, 0.5f) : new Color(1f, 0.4f, 0.4f);
             string text = won
-                ? (HeartBeat.Instance != null ? "MISSION COMPLETE - the heart is beating strong" : "MISSION COMPLETE - the artery is clear")
+                ? (HeartBeat.Instance != null ? "MISSION COMPLETE - the heart is beating strong"
+                    : FindObjectOfType<GutEnvironment>() != null ? "MISSION COMPLETE - the gut is healthy"
+                    : "MISSION COMPLETE - the artery is clear")
                 : gameMan.HealthyCellsLost >= gameMan.MaxHealthyCellsLost
                     ? "MISSION FAILED - too many curable cells destroyed"
                     : gameMan.BloodLoss01 >= 1f
                         ? "MISSION FAILED - the patient lost too much blood"
                     : gameMan.Strain01 >= 1f
                         ? "MISSION FAILED - the heart gave out"
+                    : FindObjectOfType<GutEnvironment>() != null
+                        ? "MISSION FAILED - the hull gave way"
                         : "MISSION FAILED";
             GUI.Label(new Rect(0, _virtualHeight * 0.4f, _virtualWidth, 80), text, _bannerStyle);
         }
